@@ -14,8 +14,8 @@ export default function Home() {
     return (
         <div className="flex flex-col gap-6 h-full">
             <header>
-                <h1 className="text-2xl font-bold tracking-tight text-white mb-2">US Election 2024</h1>
-                <p className="text-sm text-muted">Presidential Election Winner Market Overview</p>
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-2">MicroStrategy Sells Bitcoin?</h1>
+                <p className="text-sm text-muted">MicroStrategy sells any Bitcoin by December 31, 2026</p>
             </header>
 
             <div className="flex-1 min-h-0 glass-panel p-6">
@@ -29,7 +29,14 @@ export default function Home() {
                     </div>
                 </div>
                 <div className="h-[400px] w-full">
-                    {isError ? (
+                    {isLoading ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <div className="text-muted flex flex-col items-center gap-3">
+                                <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                                <p>Loading market data...</p>
+                            </div>
+                        </div>
+                    ) : isError ? (
                         <div className="w-full h-full flex items-center justify-center text-negative">
                             Failed to load market data.
                         </div>

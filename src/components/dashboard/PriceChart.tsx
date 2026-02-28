@@ -12,8 +12,7 @@ export default function PriceChart({ data }: { data: ChartPoint[] }) {
         return (
             <div className="w-full h-full flex items-center justify-center">
                 <div className="text-muted flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-                    <p>Loading market data...</p>
+                    <p>No price history available.</p>
                 </div>
             </div>
         );

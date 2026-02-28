@@ -6,16 +6,14 @@
 // Polymarket CLOB Gamma API
 const POLYMARKET_CLOB_URL = 'https://clob.polymarket.com';
 
-// Condition IDs for tracking markets (e.g. US Election)
-// For this MVP, we use the US Presidential Election Winner: Trump vs Biden/Harris etc.
-// Replace with the active trending condition_id as needed.
-const DEFAULT_MARKET_TOKEN_ID = '21742633143463906290569050155826241533067272736897614950488156847949938836455';
+// Using an active market for MicroStrategy selling Bitcoin in 2026.
+const DEFAULT_MARKET_TOKEN_ID = '111128191581505463501777127559667396812474366956707382672202929745167742497287';
 
 export async function fetchMarketPriceHistory(tokenId: string = DEFAULT_MARKET_TOKEN_ID) {
     try {
         // Fetch real-time price history from Polymarket CLOB API
-        // Using fid=60 corresponds to 1-hour resolution typically, or 1D.
-        const response = await fetch(`${POLYMARKET_CLOB_URL}/prices-history?interval=1d&market=${tokenId}`);
+        // Using fidelity=60 corresponds to 1-hour resolution typically, or 1D.
+        const response = await fetch(`${POLYMARKET_CLOB_URL}/prices-history?interval=1d&market=${tokenId}&fidelity=60`);
 
         if (!response.ok) {
             throw new Error(`Failed to fetch: ${response.status}`);
