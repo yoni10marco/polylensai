@@ -1,6 +1,16 @@
+"use client";
+
 import PriceChart from "@/components/dashboard/PriceChart";
+import { fetchMarketPriceHistory } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Home() {
+    const { data: chartData, isLoading, isError } = useQuery({
+        queryKey: ['marketHistory'],
+        queryFn: () => fetchMarketPriceHistory(),
+        refetchInterval: 60000, // Refetch every minute
+    });
+
     return (
         <div className="flex flex-col gap-6 h-full">
             <header>
@@ -19,7 +29,13 @@ export default function Home() {
                     </div>
                 </div>
                 <div className="h-[400px] w-full">
-                    <PriceChart />
+                    {isError ? (
+                        <div className="w-full h-full flex items-center justify-center text-negative">
+                            Failed to load market data.
+                        </div>
+                    ) : (
+                        <PriceChart data={chartData || []} />
+                    )}
                 </div>
             </div>
         </div>

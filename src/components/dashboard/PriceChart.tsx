@@ -2,22 +2,23 @@
 
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-const data = [
-    { time: '09:00', price: 45.2 },
-    { time: '10:00', price: 46.1 },
-    { time: '11:00', price: 44.8 },
-    { time: '12:00', price: 47.5 },
-    { time: '13:00', price: 48.2 },
-    { time: '14:00', price: 49.9 },
-    { time: '15:00', price: 49.1 },
-    { time: '16:00', price: 51.3 },
-    { time: '17:00', price: 52.8 },
-    { time: '18:00', price: 51.9 },
-    { time: '19:00', price: 53.4 },
-    { time: '20:00', price: 55.0 },
-];
+interface ChartPoint {
+    time: string;
+    price: number;
+}
 
-export default function PriceChart() {
+export default function PriceChart({ data }: { data: ChartPoint[] }) {
+    if (!data || data.length === 0) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-muted flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                    <p>Loading market data...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
