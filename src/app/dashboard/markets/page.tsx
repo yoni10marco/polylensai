@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchActiveMarkets } from "@/lib/api";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { TrendingUp, ArrowUpRight, BarChart2, Activity } from "lucide-react";
 
 const CATEGORIES = ["All", "Crypto", "Politics", "Pop Culture", "Sports"];
 
-export default function MarketsPage() {
+function MarketsContent() {
     const searchParams = useSearchParams();
     const searchQuery = searchParams.get('q') || "";
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -44,8 +44,8 @@ export default function MarketsPage() {
                             key={category}
                             onClick={() => setSelectedCategory(category)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === category
-                                    ? "bg-primary text-background shadow-[0_0_10px_rgba(56,189,248,0.3)]"
-                                    : "bg-surface border border-border text-muted hover:text-white hover:bg-white/5"
+                                ? "bg-primary text-background shadow-[0_0_10px_rgba(56,189,248,0.3)]"
+                                : "bg-surface border border-border text-muted hover:text-white hover:bg-white/5"
                                 }`}
                         >
                             {category}
@@ -84,8 +84,8 @@ export default function MarketsPage() {
                                     {market.title}
                                 </h3>
                                 <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${market.sentiment === 'Positive' ? 'bg-positive/20 text-positive' :
-                                        market.sentiment === 'Negative' ? 'bg-negative/20 text-negative' :
-                                            'bg-white/10 text-muted'
+                                    market.sentiment === 'Negative' ? 'bg-negative/20 text-negative' :
+                                        'bg-white/10 text-muted'
                                     }`}>
                                     <Activity className="w-3 h-3" />
                                     {market.sentiment}
@@ -119,5 +119,13 @@ export default function MarketsPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function MarketsPage() {
+    return (
+        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-muted">Loading markets...</div>}>
+            <MarketsContent />
+        </Suspense>
     );
 }
