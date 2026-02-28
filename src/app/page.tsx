@@ -3,6 +3,7 @@
 import PriceChart from "@/components/dashboard/PriceChart";
 import { fetchMarketPriceHistory } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 
 export default function Home() {
     const { data: chartData, isLoading, isError } = useQuery({
@@ -21,7 +22,10 @@ export default function Home() {
             <div className="flex-1 min-h-0 glass-panel p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block">Probability Chart</h2>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                        <Link href="/markets/111128191581505463501777127559667396812474366956707382672202929745167742497287" className="mr-4 text-xs font-semibold px-4 py-1.5 border border-primary/30 rounded text-primary hover:bg-primary/20 transition-colors">
+                            Deep Dive &rarr;
+                        </Link>
                         <span className="text-sm px-3 py-1 rounded bg-positive/20 text-positive flex items-center gap-1 font-medium">
                             <span className="w-2 h-2 rounded-full bg-positive inline-block animate-pulse"></span>
                             Live

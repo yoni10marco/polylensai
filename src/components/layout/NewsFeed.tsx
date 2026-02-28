@@ -1,7 +1,8 @@
 "use client";
 
-import { Clock, Loader2, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { Clock, Loader2, Sparkles, TrendingDown, TrendingUp, MessageSquare } from "lucide-react";
 import { useState } from "react";
+import AIChatDrawer, { AIChatContext } from "../dashboard/AIChatDrawer";
 
 type NewsItem = {
     id: string;
@@ -24,6 +25,16 @@ const INITIAL_NEWS: NewsItem[] = [
 export default function NewsFeed() {
     const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatContext, setChatContext] = useState<AIChatContext>({});
+
+    const handleOpenChat = (item: NewsItem) => {
+        setChatContext({
+            newsTitle: item.title,
+            impactScore: item.impactScore,
+        });
+        setChatOpen(true);
+    };
 
     const handleAnalyze = async (id: string, text: string) => {
         setAnalyzingId(id);
@@ -91,8 +102,8 @@ export default function NewsFeed() {
                             <div className="mt-2 p-3 bg-surface rounded-md border border-border/50 text-xs">
                                 <div className="flex justify-between items-start mb-2">
                                     <span className={`px-2 py-0.5 rounded font-medium ${item.sentiment === 'Positive' ? 'bg-positive/10 text-positive' :
-                                            item.sentiment === 'Negative' ? 'bg-negative/10 text-negative' :
-                                                'bg-muted/10 text-muted'
+                                        item.sentiment === 'Negative' ? 'bg-negative/10 text-negative' :
+                                            'bg-muted/10 text-muted'
                                         }`}>
                                         {item.sentiment}
                                     </span>
@@ -107,6 +118,13 @@ export default function NewsFeed() {
                                 <div className="flex items-center gap-1 font-semibold text-primary">
                                     <span>Trade Signal:</span> {item.suggestedTrade}
                                 </div>
+                                <button
+                                    onClick={() => handleOpenChat(item)}
+                                    className="mt-3 flex items-center justify-center gap-2 w-full py-2 px-3 rounded-md bg-secondary/10 text-white text-xs font-semibold hover:bg-white/10 transition-colors border border-border"
+                                >
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    Discuss with AI
+                                </button>
                             </div>
                         ) : (
                             <button
@@ -130,6 +148,12 @@ export default function NewsFeed() {
                     </div>
                 ))}
             </div>
+
+            <AIChatDrawer
+                isOpen={chatOpen}
+                onClose={() => setChatOpen(false)}
+                context={chatContext}
+            />
         </aside>
     );
 }

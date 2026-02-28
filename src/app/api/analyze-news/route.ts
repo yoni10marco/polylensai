@@ -8,11 +8,12 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function POST(req: Request) {
     try {
-        const { text } = await req.json();
+        const payload = await req.json();
+        const { text, isChat, message, context } = payload;
 
-        if (!text) {
+        if (!text && !isChat) {
             return NextResponse.json(
-                { error: "Text is required for analysis." },
+                { error: "Text or chat message is required for analysis." },
                 { status: 400 }
             );
         }
@@ -28,6 +29,20 @@ export async function POST(req: Request) {
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-flash",
         });
+
+        if (isChat) {
+            const chatPrompt = `System Instruction: You are a Polymarket Quant Analyst consulting with a user.
+Context about current market:
+Market Price: ${context?.price || "Unknown"}
+Related News Headline: "${context?.news || "None"}"
+Recent API Impact Score (if any): ${context?.impactScore || "N/A"}/10
+
+User Message: "${message}"
+
+Respond to the user directly, advising them on trading strategies, context, or market implications. Keep your answer brief, insightful, plain text (no markdown json blocks), as if advising a client on a Bloomberg chat terminal.`;
+            const result = await model.generateContent(chatPrompt);
+            return NextResponse.json({ reply: result.response.text().trim() });
+        }
 
         const prompt = `System Instruction: You are a Polymarket Quant Analyst. 
 Your job is to analyze news headlines or short content and determine their potential impact on active political and financial markets.
