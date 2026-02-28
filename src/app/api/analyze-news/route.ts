@@ -25,9 +25,9 @@ export async function POST(req: Request) {
             );
         }
 
-        // Get the Gemini 1.5 Flash model
+        // Get the Gemini 2.5 Flash model
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest",
+            model: "gemini-2.5-flash-lite",
         });
 
         if (isChat) {
