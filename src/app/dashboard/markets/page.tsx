@@ -102,7 +102,7 @@ function MarketsContent() {
                     ))
                 ) : filteredMarkets && filteredMarkets.length > 0 ? (
                     filteredMarkets.map((market: any) => (
-                        <Link href={`/dashboard/markets/${market.id}`} key={market.id} className="group glass-panel p-6 flex flex-col hover:border-primary/50 transition-colors relative overflow-hidden min-h-[220px]">
+                        <Link href={`/dashboard/markets/${market.conditionId}`} key={market.id} className="group glass-panel p-6 flex flex-col hover:border-primary/50 transition-colors relative overflow-hidden min-h-[220px]">
                             <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
 
                             <div className="flex justify-between items-start mb-4 gap-4">
@@ -133,10 +133,14 @@ function MarketsContent() {
                             <div className="mt-6 flex justify-between items-end border-t border-border/50 pt-4">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted mb-1">PROBABILITY</span>
-                                    <span className="text-3xl font-extrabold text-white flex items-center gap-1">
-                                        {market?.probability === "N/A" ? "N/A" : `${market?.probability}¢`}
-                                        {market?.probability > 50 ? <ArrowUpRight className="w-5 h-5 text-positive" /> : null}
-                                    </span>
+                                    {market?.probability === "N/A" ? (
+                                        <div className="bg-white/10 text-muted px-2 py-1 rounded-sm text-sm font-bold inline-block self-start mt-1">N/A</div>
+                                    ) : (
+                                        <div className={`flex items-center gap-1 font-extrabold px-2 py-1 rounded-sm text-xl mt-1 self-start ${market?.probability > 50 ? 'bg-positive/20 text-positive' : 'bg-negative/20 text-negative'}`}>
+                                            {market?.probability}¢
+                                            {market?.probability > 50 ? <ArrowUpRight className="w-5 h-5 opacity-80" /> : null}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs text-muted mb-1 flex items-center gap-1"><BarChart2 className="w-3 h-3" /> VOL</span>

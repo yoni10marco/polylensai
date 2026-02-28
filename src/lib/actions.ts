@@ -27,36 +27,37 @@ export async function fetchActiveMarketsAction(limit = 50) {
         };
 
         const getCategory = (market: any) => {
-            if (market.groupItemTitle) return market.groupItemTitle;
-            if (market.category) return market.category;
-            if (market.tags && market.tags.length > 0) return market.tags[0];
-            return "General";
+            const VALID_CATEGORIES = ['Politics', 'Crypto', 'Sports', 'Pop Culture'];
+            return VALID_CATEGORIES.find(c =>
+                market.groupItemTitle?.includes(c) ||
+                market.category?.includes(c) ||
+                market.tags?.some((t: string) => t.includes(c))
+            ) || 'Other';
         };
+
+        if (!Array.isArray(data)) return [];
+        console.log("FIRST_MARKET_DEBUG:", data[0]);
 
         // Robust Mapping Logic
         const mappedData = data.map((market: any) => {
             // Find finding probability
             let probability: number | string = "N/A";
-            if (market.outcomes && market.outcomePrices && market.outcomes.length > 0) {
-                // Usually outcomePrices is an array matching outcomes ("Yes", "No")
-                // Let's grab the price for the first outcome (e.g. "Yes") or index 0
-                try {
-                    const priceString = market.outcomePrices[0];
-                    if (priceString) {
-                        probability = Number((parseFloat(priceString) * 100).toFixed(1));
-                    }
-                } catch (e) {
-                    console.log(`[fetchActiveMarketsAction] Error parsing probability for ${market.id}`, e);
-                }
+            try {
+                const prices = JSON.parse(market.outcomePrices || "[]");
+                probability = prices[0] ? (parseFloat(prices[0]) * 100).toFixed(1) : "N/A";
+            } catch (e) {
+                console.log(`[fetchActiveMarketsAction] Error parsing probability for ${market.conditionId}`, e);
             }
 
+            const volumePrice = market.volume ? parseFloat(market.volume) : 0;
+
             return {
-                id: market.conditionId || market.id || market.slug,
+                id: market.conditionId, // Use conditionId as id for routing
                 title: market.question || "Unknown Market",
                 category: getCategory(market),
                 probability: probability,
-                volume: formatVolume(market.volume || market.volume24hr),
-                image: market.image || "",
+                volume: formatVolume(volumePrice),
+                image: market.image || market.icon || "",
                 sentiment: Math.random() > 0.5 ? "Positive" : "Negative", // Mock sentiment
                 conditionId: market.conditionId,
                 slug: market.slug,

@@ -5,10 +5,10 @@ import { fetchMarketPriceHistoryAction } from "@/lib/actions";
 import PriceChart from "@/components/dashboard/PriceChart";
 import { ArrowUpRight, Activity } from "lucide-react";
 
-export default function MarketDetailPage({ params }: { params: { id: string } }) {
+export default function MarketDetailPage({ params }: { params: { conditionId: string } }) {
     const { data: chartData, isLoading, isError } = useQuery({
-        queryKey: ['marketHistory', params.id],
-        queryFn: () => fetchMarketPriceHistoryAction(params.id),
+        queryKey: ['marketHistory', params.conditionId],
+        queryFn: () => fetchMarketPriceHistoryAction(params.conditionId),
         refetchInterval: 60000,
     });
 
@@ -41,7 +41,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
             <div className="glass-panel p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Market Details</h1>
-                    <p className="text-muted text-sm font-mono break-all">{params.id}</p>
+                    <p className="text-muted text-sm font-mono break-all">{params.conditionId}</p>
                 </div>
 
                 <div className="flex gap-8">
