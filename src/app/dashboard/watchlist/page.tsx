@@ -100,13 +100,13 @@ function WatchlistContent() {
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted mb-1">PROBABILITY</span>
                                     <span className="text-3xl font-extrabold text-white flex items-center gap-1">
-                                        {market?.probability || 0}¢
+                                        {market?.probability === "N/A" ? "N/A" : `${market?.probability}¢`}
                                         {market?.probability > 50 ? <ArrowUpRight className="w-5 h-5 text-positive" /> : null}
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs text-muted mb-1 flex items-center gap-1"><BarChart2 className="w-3 h-3" /> VOL</span>
-                                    <span className="text-sm font-bold text-gray-300">${market?.volume || 0}</span>
+                                    <span className="text-sm font-bold text-gray-300">{market?.volume || "$0"}</span>
                                 </div>
                             </div>
                         </Link>

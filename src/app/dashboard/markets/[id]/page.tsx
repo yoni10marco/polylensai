@@ -18,6 +18,23 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
     // In a real scenario, this would check the delta of probability over last 10 minutes vs the impact score of the latest news.
     const hasLagSignal = true; // Hardcoded true to demonstrate the feature as requested
 
+    if (!isLoading && (!chartData || chartData.length === 0 || isError)) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
+                <div className="bg-surface border border-border rounded-xl p-8 flex flex-col items-center text-center max-w-md">
+                    <Activity className="w-12 h-12 text-negative mb-4" />
+                    <h1 className="text-2xl font-bold text-white mb-2">Market Not Found</h1>
+                    <p className="text-muted text-sm mb-6">
+                        The market data you are looking for could not be loaded. It may have been resolved, archived, or does not exist.
+                    </p>
+                    <button onClick={() => window.history.back()} className="px-6 py-2 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 transition-colors rounded-md font-bold">
+                        Go Back
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-6 h-full w-full">
             {/* Hero Section */}
@@ -56,10 +73,6 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
                                     <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
                                     Loading historical data...
                                 </div>
-                            </div>
-                        ) : isError ? (
-                            <div className="w-full h-full flex items-center justify-center text-negative">
-                                Failed to load market data for this token.
                             </div>
                         ) : (
                             <PriceChart data={chartData || []} />
