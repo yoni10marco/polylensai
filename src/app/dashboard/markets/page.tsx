@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchActiveMarkets } from "@/lib/api";
+import { fetchActiveMarketsAction } from "@/lib/actions";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TrendingUp, ArrowUpRight, BarChart2, Activity, Star } from "lucide-react";
@@ -34,9 +34,12 @@ function MarketsContent() {
 
     const { data: markets, isLoading } = useQuery({
         queryKey: ['activeMarkets'],
-        queryFn: () => fetchActiveMarkets(),
+        queryFn: () => fetchActiveMarketsAction(50),
         refetchInterval: 300000, // 5 min
     });
+
+    // Debugging logic
+    console.log("[MarketsPage] Render cycle markets state:", markets ? markets.length : "loading");
 
     const filteredMarkets = markets?.filter((market: any) => {
         const matchesSearch = market.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -104,14 +107,14 @@ function MarketsContent() {
 
                             <div className="flex justify-between items-start mb-4 gap-4">
                                 <h3 className="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors line-clamp-3">
-                                    {market.title}
+                                    {market?.title}
                                 </h3>
                                 <div className="flex flex-col items-end gap-2">
                                     <button
-                                        onClick={(e) => toggleWatchlist(e, market.id.toString())}
+                                        onClick={(e) => toggleWatchlist(e, market?.id?.toString())}
                                         className="text-muted hover:text-yellow-400 transition-colors z-10"
                                     >
-                                        <Star className={`w-5 h-5 ${watchlist.includes(market.id.toString()) ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                                        <Star className={`w-5 h-5 ${watchlist.includes(market?.id?.toString()) ? 'fill-yellow-400 text-yellow-400' : ''}`} />
                                     </button>
                                     <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${market.sentiment === 'Positive' ? 'bg-positive/20 text-positive' :
                                         market.sentiment === 'Negative' ? 'bg-negative/20 text-negative' :
@@ -124,20 +127,20 @@ function MarketsContent() {
                             </div>
 
                             <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-auto">
-                                {market.category}
+                                {market?.category}
                             </div>
 
                             <div className="mt-6 flex justify-between items-end border-t border-border/50 pt-4">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted mb-1">PROBABILITY</span>
                                     <span className="text-3xl font-extrabold text-white flex items-center gap-1">
-                                        {market.probability}¢
-                                        {market.probability > 50 ? <ArrowUpRight className="w-5 h-5 text-positive" /> : null}
+                                        {market?.probability || 0}¢
+                                        {market?.probability > 50 ? <ArrowUpRight className="w-5 h-5 text-positive" /> : null}
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className="text-xs text-muted mb-1 flex items-center gap-1"><BarChart2 className="w-3 h-3" /> VOL</span>
-                                    <span className="text-sm font-bold text-gray-300">${market.volume}</span>
+                                    <span className="text-sm font-bold text-gray-300">${market?.volume || 0}</span>
                                 </div>
                             </div>
                         </Link>

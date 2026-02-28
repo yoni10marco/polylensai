@@ -1,21 +1,21 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchMarketPriceHistory } from "@/lib/api";
+import { fetchMarketPriceHistoryAction } from "@/lib/actions";
 import PriceChart from "@/components/dashboard/PriceChart";
 import { ArrowUpRight, Activity } from "lucide-react";
 
 export default function MarketDetailPage({ params }: { params: { id: string } }) {
     const { data: chartData, isLoading, isError } = useQuery({
         queryKey: ['marketHistory', params.id],
-        queryFn: () => fetchMarketPriceHistory(params.id),
+        queryFn: () => fetchMarketPriceHistoryAction(params.id),
         refetchInterval: 60000,
     });
 
     const currentPrice = chartData && chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
 
     // MOCK Lag Detector logic:
-    // In a real scenario, this would check the delta of price over last 10 minutes vs the impact score of the latest news.
+    // In a real scenario, this would check the delta of probability over last 10 minutes vs the impact score of the latest news.
     const hasLagSignal = true; // Hardcoded true to demonstrate the feature as requested
 
     return (
@@ -47,7 +47,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
                 {/* Advanced Chart */}
                 <div className="flex-1 glass-panel p-6 flex flex-col min-h-[400px]">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block">Advanced Price History</h2>
+                        <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block">Advanced Probability History</h2>
                     </div>
                     <div className="flex-1 min-h-0 w-full">
                         {isLoading ? (
@@ -82,7 +82,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
                                 </div>
                             </div>
                             <p className="text-sm text-gray-300 leading-relaxed">
-                                A recent news event scored an <span className="text-white font-bold tracking-wide">Impact &gt; 8</span>, but the market price has moved less than 2% in the last 10 minutes.
+                                A recent news event scored an <span className="text-white font-bold tracking-wide">Impact &gt; 8</span>, but the market probability has moved less than 2% in the last 10 minutes.
                             </p>
                             <button className="mt-4 w-full py-2 bg-primary/20 text-primary border border-primary/50 rounded-md text-sm font-semibold hover:bg-primary/30 transition-colors">
                                 Analyze Market
