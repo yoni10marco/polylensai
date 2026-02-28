@@ -1,30 +1,28 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchActiveMarkets } from "@/lib/api";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { TrendingUp, ArrowUpRight, BarChart2, Activity, Star } from "lucide-react";
-import { useEffect } from "react";
+import { Star, TrendingUp, ArrowUpRight, BarChart2, Activity } from "lucide-react";
 
-const CATEGORIES = ["All", "Watchlist", "Crypto", "Politics", "Pop Culture", "Sports"];
-
-function MarketsContent() {
-    const searchParams = useSearchParams();
-    const searchQuery = searchParams.get('q') || "";
-    const [selectedCategory, setSelectedCategory] = useState("All");
+function WatchlistContent() {
     const [watchlist, setWatchlist] = useState<string[]>([]);
 
+    // Client-side hydration for localStorage
     useEffect(() => {
         const saved = localStorage.getItem('polylens_watchlist');
         if (saved) {
-            try { setWatchlist(JSON.parse(saved)); } catch (e) { }
+            try {
+                setWatchlist(JSON.parse(saved));
+            } catch (e) {
+                console.error("Failed to parse watchlist", e);
+            }
         }
     }, []);
 
     const toggleWatchlist = (e: React.MouseEvent, id: string) => {
-        e.preventDefault(); // Prevent navigating to the market detail page
+        e.preventDefault();
         setWatchlist(prev => {
             const next = prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id];
             localStorage.setItem('polylens_watchlist', JSON.stringify(next));
@@ -38,56 +36,27 @@ function MarketsContent() {
         refetchInterval: 300000, // 5 min
     });
 
-    const filteredMarkets = markets?.filter((market: any) => {
-        const matchesSearch = market.title.toLowerCase().includes(searchQuery.toLowerCase());
-
-        if (selectedCategory === "Watchlist") {
-            return matchesSearch && watchlist.includes(market.id.toString());
-        }
-
-        const matchesCategory = selectedCategory === "All" || market.category.toLowerCase().includes(selectedCategory.toLowerCase());
-        return matchesSearch && matchesCategory;
-    });
+    const filteredMarkets = markets?.filter((market: any) => watchlist.includes(market.id.toString()));
 
     return (
         <div className="flex flex-col gap-6 h-full w-full max-w-7xl mx-auto pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-white mb-2 flex items-center gap-3">
-                        <TrendingUp className="w-8 h-8 text-primary" />
-                        Global Markets
+                        <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
+                        My Watchlist
                     </h1>
-                    <p className="text-muted text-sm">Discover trending events and trade on information asymmetry.</p>
+                    <p className="text-muted text-sm">Your hand-picked markets and custom alpha signals.</p>
                 </div>
 
-                {/* Category Filters */}
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto hide-scrollbar">
-                    {CATEGORIES.map(category => (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === category
-                                ? "bg-primary text-background shadow-[0_0_10px_rgba(56,189,248,0.3)]"
-                                : "bg-surface border border-border text-muted hover:text-white hover:bg-white/5"
-                                }`}
-                        >
-                            {category}
-                        </button>
-                    ))}
-                </div>
+                <Link href="/dashboard/markets" className="text-primary text-sm font-semibold hover:text-white transition-colors bg-primary/10 px-4 py-2 rounded-md">
+                    Explore More Markets
+                </Link>
             </div>
 
-            {searchQuery && (
-                <div className="text-sm text-primary mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg inline-block self-start">
-                    Showing results for: <span className="font-bold">"{searchQuery}"</span>
-                </div>
-            )}
-
-            {/* Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
                 {isLoading ? (
-                    // Skeleton Loaders
-                    Array.from({ length: 6 }).map((_, i) => (
+                    Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="glass-panel p-6 animate-pulse flex flex-col min-h-[220px]">
                             <div className="h-6 bg-white/5 rounded w-3/4 mb-4"></div>
                             <div className="h-4 bg-white/5 rounded w-1/4 mb-8"></div>
@@ -143,9 +112,12 @@ function MarketsContent() {
                         </Link>
                     ))
                 ) : (
-                    <div className="col-span-full py-12 flex flex-col items-center justify-center text-muted border border-dashed border-border rounded-xl">
-                        <TrendingUp className="w-12 h-12 mb-4 opacity-50" />
-                        <p>No markets matched your specific criteria.</p>
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-center glass-panel border-dashed border-border group hover:border-primary/30 transition-colors">
+                        <Star className="w-16 h-16 fill-transparent stroke-muted mb-4 group-hover:stroke-primary group-hover:fill-primary/20 transition-all" />
+                        <h3 className="text-xl font-bold text-white mb-2">Your Watchlist is Empty</h3>
+                        <p className="text-sm text-gray-400 max-w-md">
+                            Start adding markets you care about by clicking the Star icon on the Global Markets page to track custom alpha signals.
+                        </p>
                     </div>
                 )}
             </div>
@@ -153,10 +125,10 @@ function MarketsContent() {
     );
 }
 
-export default function MarketsPage() {
+export default function WatchlistPage() {
     return (
-        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-muted">Loading markets...</div>}>
-            <MarketsContent />
+        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-muted">Loading watchlist...</div>}>
+            <WatchlistContent />
         </Suspense>
     );
 }

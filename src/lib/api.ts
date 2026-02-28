@@ -46,32 +46,30 @@ export async function fetchMarketPriceHistory(tokenId: string = DEFAULT_MARKET_T
 // Fetch active markets for the Global Markets grid
 export async function fetchActiveMarkets(category?: string) {
     try {
-        // Querying the Gamma API for trending events
-        const url = new URL('https://gamma-api.polymarket.com/events');
+        // Querying the Gamma API for trending markets
+        const url = new URL('https://gamma-api.polymarket.com/markets');
         url.searchParams.append('active', 'true');
-        url.searchParams.append('closed', 'false');
-        url.searchParams.append('limit', '20');
+        url.searchParams.append('limit', '100');
+        url.searchParams.append('order', 'volume');
+        url.searchParams.append('dir', 'desc');
 
-        // Note: The Gamma API groups markets under events. 
-        // For simplicity in this demo, we'll extract the first market of each event.
         const response = await fetch(url.toString());
         if (!response.ok) throw new Error("Failed to fetch markets");
 
-        const events = await response.json();
+        const marketsResponse = await response.json();
 
-        return events.map((event: any) => {
-            const primaryMarket = event.markets && event.markets.length > 0 ? event.markets[0] : null;
+        return marketsResponse.map((market: any) => {
             // Provide a mock sentiment based on pure random selection to demonstrate the UI
             const mockSentiment = Math.random() > 0.6 ? 'Positive' : Math.random() > 0.3 ? 'Neutral' : 'Negative';
 
             return {
-                id: primaryMarket ? primaryMarket.id : event.id,
-                title: event.title,
-                category: event.tags ? event.tags[0] : 'General',
-                probability: primaryMarket ? Math.round(primaryMarket.outcomePrices[0] * 100) : 0,
-                volume: event.volume ? Number(event.volume).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
+                id: market.id,
+                title: market.question,
+                category: market.groupItemTitle || 'General',
+                probability: market.outcomePrices ? Math.round(market.outcomePrices[0] * 100) : 0,
+                volume: market.volume ? Number(market.volume).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0',
                 sentiment: mockSentiment,
-                image: event.image || null,
+                image: market.image || null,
             };
         }).filter((m: any) => m.id && m.probability > 0);
 

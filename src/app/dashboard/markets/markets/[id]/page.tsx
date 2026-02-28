@@ -85,7 +85,7 @@ export default function MarketDetailPage({ params }: { params: { id: string } })
                                 A recent news event scored an <span className="text-white font-bold tracking-wide">Impact &gt; 8</span>, but the market price has moved less than 2% in the last 10 minutes.
                             </p>
                             <button className="mt-4 w-full py-2 bg-primary/20 text-primary border border-primary/50 rounded-md text-sm font-semibold hover:bg-primary/30 transition-colors">
-                                Trade Now
+                                Analyze Market
                             </button>
                         </div>
                     )}

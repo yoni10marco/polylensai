@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BellRing, Compass, LayoutDashboard, Settings, User } from "lucide-react";
+import { BarChart3, BellRing, Compass, LayoutDashboard, Settings, User, Star } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Global Markets", href: "/dashboard/markets", icon: Compass },
+    { name: "Watchlist", href: "/dashboard/watchlist", icon: Star },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
     { name: "Alerts", href: "/dashboard/alerts", icon: BellRing },
 ];
@@ -22,6 +23,7 @@ export default function Sidebar() {
                     <div className="w-3 h-3 rounded-full bg-primary shadow-[0_0_10px_#00e5ff]"></div>
                     PolyLens AI
                 </h1>
+                <p className="text-[10px] text-muted uppercase tracking-widest mt-1 ml-5">Intelligence Suite</p>
             </div>
 
             <nav className="flex-1 p-4 space-y-1">

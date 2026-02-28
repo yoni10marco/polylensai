@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Wallet } from "lucide-react";
+import { Search, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -36,8 +36,8 @@ export default function TopBar() {
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary inline-block"></span> 24h Users: 12.4K</span>
                 </div>
                 <button className="flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 px-4 py-2 rounded-md font-medium transition-colors text-sm">
-                    <Wallet className="w-4 h-4" />
-                    Connect Wallet
+                    <LogIn className="w-4 h-4" />
+                    Login to Suite
                 </button>
             </div>
         </header>
