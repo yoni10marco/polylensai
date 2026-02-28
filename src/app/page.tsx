@@ -1,0 +1,27 @@
+import PriceChart from "@/components/dashboard/PriceChart";
+
+export default function Home() {
+    return (
+        <div className="flex flex-col gap-6 h-full">
+            <header>
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-2">US Election 2024</h1>
+                <p className="text-sm text-muted">Presidential Election Winner Market Overview</p>
+            </header>
+
+            <div className="flex-1 min-h-0 glass-panel p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block">Probability Chart</h2>
+                    <div className="flex gap-2">
+                        <span className="text-sm px-3 py-1 rounded bg-positive/20 text-positive flex items-center gap-1 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-positive inline-block animate-pulse"></span>
+                            Live
+                        </span>
+                    </div>
+                </div>
+                <div className="h-[400px] w-full">
+                    <PriceChart />
+                </div>
+            </div>
+        </div>
+    );
+}
