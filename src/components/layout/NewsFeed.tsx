@@ -1,7 +1,9 @@
 "use client";
 
 import { Clock, Loader2, Sparkles, TrendingDown, TrendingUp, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchRealtimeNews } from "@/lib/api";
 import AIChatDrawer, { AIChatContext } from "../dashboard/AIChatDrawer";
 
 type NewsItem = {
@@ -23,10 +25,33 @@ const INITIAL_NEWS: NewsItem[] = [
 ];
 
 export default function NewsFeed() {
-    const [news, setNews] = useState<NewsItem[]>(INITIAL_NEWS);
+    const { data: liveNews } = useQuery({
+        queryKey: ['realtimeNews'],
+        queryFn: () => fetchRealtimeNews(),
+        refetchInterval: 15000, // Simulate fresh poll every 15s
+    });
+
+    const [news, setNews] = useState<NewsItem[]>([]);
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
     const [chatOpen, setChatOpen] = useState(false);
     const [chatContext, setChatContext] = useState<AIChatContext>({});
+
+    // Sync mock stream to our local state which holds the AI mutations
+    useEffect(() => {
+        if (liveNews) {
+            setNews((prev) => {
+                // simple merge keeping existing AI analysis
+                const merged = [...liveNews.map(n => ({ id: n.id.toString(), title: n.title, timestamp: n.time }))];
+                prev.forEach(p => {
+                    const idx = merged.findIndex(m => m.id === p.id);
+                    if (idx !== -1 && p.sentiment) {
+                        merged[idx] = { ...merged[idx], ...p };
+                    }
+                });
+                return merged;
+            });
+        }
+    }, [liveNews]);
 
     const handleOpenChat = (item: NewsItem) => {
         setChatContext({

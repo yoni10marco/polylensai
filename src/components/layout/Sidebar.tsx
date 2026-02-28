@@ -1,15 +1,20 @@
+"use client";
+
 import { BarChart3, BellRing, Compass, LayoutDashboard, Settings, User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, active: true },
-    { name: "Markets", href: "/markets", icon: Compass, active: false },
-    { name: "Analytics", href: "/analytics", icon: BarChart3, active: false },
-    { name: "Alerts", href: "/alerts", icon: BellRing, active: false },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Global Markets", href: "/dashboard/markets", icon: Compass },
+    { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+    { name: "Alerts", href: "/dashboard/alerts", icon: BellRing },
 ];
 
 export default function Sidebar() {
+    const pathname = usePathname();
+
     return (
         <aside className="w-64 border-r border-border bg-surface flex flex-col">
             <div className="p-6 border-b border-border">
@@ -23,24 +28,30 @@ export default function Sidebar() {
                 <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-4 px-3">
                     Menu
                 </div>
-                {NAV_ITEMS.map((item) => (
-                    <Link
-                        key={item.name}
-                        href={item.href}
-                        className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
-                            item.active
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted hover:text-white hover:bg-white/5"
-                        )}
-                    >
-                        <item.icon className="w-5 h-5" />
-                        {item.name}
-                    </Link>
-                ))}
+                {NAV_ITEMS.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className={cn(
+                                "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
+                                isActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-muted hover:text-white hover:bg-white/5"
+                            )}
+                        >
+                            <item.icon className="w-5 h-5" />
+                            {item.name}
+                        </Link>
+                    )
+                })}
             </nav>
 
             <div className="p-4 border-t border-border space-y-1">
+                <Link href="/" className="flex items-center justify-center gap-2 mb-4 w-full py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors">
+                    Back to Website
+                </Link>
                 <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
                     <User className="w-5 h-5" />
                     Profile

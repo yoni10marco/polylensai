@@ -1,6 +1,19 @@
+"use client";
+
 import { Search, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function TopBar() {
+    const router = useRouter();
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter" && searchQuery.trim()) {
+            router.push(`/dashboard/markets?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
     return (
         <header className="h-16 border-b border-border bg-surface/50 backdrop-blur flex items-center justify-between px-6 sticky top-0 z-10">
             <div className="relative w-96">
@@ -9,6 +22,9 @@ export default function TopBar() {
                 </div>
                 <input
                     type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleSearch}
                     className="block w-full pl-10 pr-3 py-2 border border-border rounded-md leading-5 bg-background text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                     placeholder="Search markets, users, or topics..."
                 />

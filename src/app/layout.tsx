@@ -1,14 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import ReactQueryProvider from "@/components/providers/ReactQueryProvider";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import localFont from "next/font/local";
+import "../globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = localFont({
+    src: "../fonts/GeistVF.woff",
+    variable: "--font-geist-sans",
+    weight: "100 900",
+});
+const geistMono = localFont({
+    src: "../fonts/GeistMonoVF.woff",
+    variable: "--font-geist-mono",
+    weight: "100 900",
+});
 
 export const metadata: Metadata = {
-    title: "PolyLens AI",
-    description: "Analytics platform for Polymarket traders",
+    title: "PolyLens AI | Polymarket Analytics",
+    description: "Trade with AI-Powered Alpha. Contextual Chat, Signal Detection, and Real-Time Sentiment.",
 };
 
 export default function RootLayout({
@@ -18,10 +25,10 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" className="dark">
-            <body className={inter.className}>
-                <ReactQueryProvider>
-                    <DashboardLayout>{children}</DashboardLayout>
-                </ReactQueryProvider>
+            <body
+                className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen selection:bg-primary/30`}
+            >
+                {children}
             </body>
         </html>
     );
