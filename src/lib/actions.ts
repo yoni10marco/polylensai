@@ -1,6 +1,9 @@
 "use server";
 
-const VALID_CATEGORIES = ['Politics', 'Crypto', 'Sports', 'Pop Culture'] as const;
+const VALID_CATEGORIES = [
+    'Politics', 'Crypto', 'Sports', 'Pop Culture',
+    'Business', 'Science', 'Entertainment', 'Weather', 'Social Media'
+] as const;
 
 function formatVolume(vol: string | number | undefined): string {
     const num = Number(vol);
@@ -27,19 +30,32 @@ function getProbability(outcomePrices: string | undefined): string {
     }
 }
 
-function getCategory(tags: Array<{ label?: string; slug?: string }> | undefined): string {
-    if (!tags || !Array.isArray(tags)) return "Other";
-    for (const tag of tags) {
-        const label = tag.label || "";
-        const matched = VALID_CATEGORIES.find(c =>
-            label.toLowerCase().includes(c.toLowerCase())
-        );
-        if (matched) return matched;
+function getCategory(tags: Array<{ label?: string; slug?: string }> | undefined, title = "", groupTitle = ""): string {
+    const haystack = [
+        ...(tags || []).map(t => t.label || t.slug || ""),
+        title,
+        groupTitle,
+    ].join(" ").toLowerCase();
+
+    const RULES: Array<[string, string]> = [
+        ["crypto|bitcoin|ethereum|defi|nft|blockchain|solana|doge|xrp", "Crypto"],
+        ["politic|election|vote|congress|senate|president|white house|biden|trump|democrat|republican", "Politics"],
+        ["sport|nba|nfl|mlb|nhl|soccer|football|basketball|baseball|tennis|golf|ufc|mma|olympic", "Sports"],
+        ["weather|hurricane|tornado|earthquake|flood|climate|storm", "Weather"],
+        ["twitter|x\.com|social media|tiktok|instagram|youtube|facebook|reddit|elon musk tweet", "Social Media"],
+        ["entertain|movie|film|award|oscar|emmy|grammy|music|celebrity|box office|taylor swift|beyonce", "Entertainment"],
+        ["science|ai|artificial intelligence|spacex|nasa|space|research|study|health|vaccine|gene", "Science"],
+        ["business|economy|stock|market|gdp|fed|inflation|interest rate|earnings|ipo|merger", "Business"],
+        ["pop culture|celebrity|kardashian|reality tv|superbowl halftime", "Pop Culture"],
+    ];
+
+    for (const [pattern, category] of RULES) {
+        if (new RegExp(pattern).test(haystack)) return category;
     }
     return "Other";
 }
 
-export async function fetchActiveMarketsAction(limit = 50) {
+export async function fetchActiveMarketsAction(limit = 200) {
     try {
         console.log(`[fetchActiveMarketsAction] Fetching events from Gamma API... limit=${limit}`);
 
@@ -77,14 +93,18 @@ export async function fetchActiveMarketsAction(limit = 50) {
                 conditionId: market.conditionId,
                 title: event.title || market.question || "Unknown Market",
                 question: market.question,
-                category: getCategory(event.tags),
+                category: getCategory(event.tags, event.title || "", event.groupItemTitle || ""),
                 probability: getProbability(market.outcomePrices),
+                probabilityNum: (() => { try { const p = JSON.parse(market.outcomePrices || '[]'); return parseFloat(p[0]) * 100 || 0; } catch { return 0; } })(),
                 volume: formatVolume(market.volume || event.volume),
+                volumeNum: parseFloat(market.volume || event.volume || '0'),
                 volume24hr: formatVolume(event.volume24hr),
+                volume24hrNum: parseFloat(event.volume24hr || '0'),
                 image: event.image || market.image || "",
                 sentiment: Math.random() > 0.5 ? "Positive" : "Negative",
                 slug: market.slug || event.slug,
                 endDate: market.endDateIso || event.endDate,
+                startDate: event.startDate || market.startDate,
             }));
         });
 
