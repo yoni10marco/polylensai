@@ -1,31 +1,37 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchMarketPriceHistoryAction } from "@/lib/actions";
+import { fetchMarketPriceHistoryAction, fetchMarketByConditionId } from "@/lib/actions";
 import PriceChart from "@/components/dashboard/PriceChart";
-import { ArrowUpRight, Activity } from "lucide-react";
+import { ArrowUpRight, Activity, TrendingUp, BarChart2, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 export default function MarketDetailPage({ params }: { params: { conditionId: string } }) {
-    const { data: chartData, isLoading, isError } = useQuery({
-        queryKey: ['marketHistory', params.conditionId],
-        queryFn: () => fetchMarketPriceHistoryAction(params.conditionId),
+    const { conditionId } = params;
+
+    const { data: market, isLoading: marketLoading } = useQuery({
+        queryKey: ['marketDetail', conditionId],
+        queryFn: () => fetchMarketByConditionId(conditionId),
+    });
+
+    const { data: chartData, isLoading: chartLoading } = useQuery({
+        queryKey: ['marketHistory', conditionId],
+        queryFn: () => fetchMarketPriceHistoryAction(conditionId),
         refetchInterval: 60000,
     });
 
-    const currentPrice = chartData && chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
+    const isLoading = marketLoading || chartLoading;
+    const currentPrice = chartData && chartData.length > 0 ? chartData[chartData.length - 1].price : null;
+    const hasLagSignal = true;
 
-    // MOCK Lag Detector logic:
-    // In a real scenario, this would check the delta of probability over last 10 minutes vs the impact score of the latest news.
-    const hasLagSignal = true; // Hardcoded true to demonstrate the feature as requested
-
-    if (!isLoading && (!chartData || chartData.length === 0 || isError)) {
+    if (!isLoading && !market) {
         return (
             <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-4">
                 <div className="bg-surface border border-border rounded-xl p-8 flex flex-col items-center text-center max-w-md">
                     <Activity className="w-12 h-12 text-negative mb-4" />
                     <h1 className="text-2xl font-bold text-white mb-2">Market Not Found</h1>
                     <p className="text-muted text-sm mb-6">
-                        The market data you are looking for could not be loaded. It may have been resolved, archived, or does not exist.
+                        The market data you are looking for could not be loaded. It may have resolved, been archived, or does not exist.
                     </p>
                     <button onClick={() => window.history.back()} className="px-6 py-2 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 transition-colors rounded-md font-bold">
                         Go Back
@@ -39,43 +45,93 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
         <div className="flex flex-col gap-6 h-full w-full">
             {/* Hero Section */}
             <div className="glass-panel p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Market Details</h1>
-                    <p className="text-muted text-sm font-mono break-all">{params.conditionId}</p>
+                <div className="flex-1 min-w-0">
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            <div className="h-8 bg-white/5 rounded w-3/4 animate-pulse" />
+                            <div className="h-4 bg-white/5 rounded w-1/2 animate-pulse" />
+                        </div>
+                    ) : (
+                        <>
+                            <h1 className="text-2xl font-bold tracking-tight text-white mb-2 leading-tight">{market?.title}</h1>
+                            <p className="text-muted text-xs font-mono break-all">{conditionId}</p>
+                        </>
+                    )}
                 </div>
 
-                <div className="flex gap-8">
+                <div className="flex gap-8 shrink-0">
                     <div className="flex flex-col items-end">
-                        <span className="text-muted text-sm uppercase tracking-wider font-semibold">Current Probability</span>
-                        <div className="text-4xl font-bold text-primary flex items-center gap-2">
-                            {currentPrice > 0 ? `${currentPrice}¢` : '--'}
-                            <ArrowUpRight className="w-6 h-6 text-positive" />
-                        </div>
+                        <span className="text-muted text-sm uppercase tracking-wider font-semibold mb-1">Probability (Yes)</span>
+                        {isLoading ? (
+                            <div className="h-10 bg-white/5 rounded w-24 animate-pulse" />
+                        ) : (
+                            <div className={`flex items-center gap-1 text-3xl font-extrabold px-3 py-1 rounded-lg ${market?.probability !== "N/A" && parseFloat(market?.probability || "0") > 50
+                                    ? 'text-positive'
+                                    : market?.probability === "N/A"
+                                        ? 'text-muted'
+                                        : 'text-negative'
+                                }`}>
+                                {market?.probability === "N/A" ? "N/A" : `${market?.probability}¢`}
+                                {currentPrice && currentPrice > 50 && <ArrowUpRight className="w-6 h-6 text-positive" />}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col items-end border-l border-border pl-8">
-                        <span className="text-muted text-sm uppercase tracking-wider font-semibold">24h Volume</span>
-                        <span className="text-2xl font-bold text-white">$1.2M</span>
+                        <span className="text-muted text-sm uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+                            <BarChart2 className="w-4 h-4" /> Volume
+                        </span>
+                        {isLoading ? (
+                            <div className="h-8 bg-white/5 rounded w-20 animate-pulse" />
+                        ) : (
+                            <span className="text-2xl font-bold text-white">{market?.volume || "$0"}</span>
+                        )}
                     </div>
                 </div>
             </div>
 
+            {/* Outcomes */}
+            {!isLoading && market?.outcomes && market.outcomes.length > 0 && (
+                <div className="glass-panel p-6">
+                    <h2 className="text-sm font-semibold text-muted uppercase tracking-wider mb-4">Outcomes</h2>
+                    <div className="flex gap-3 flex-wrap">
+                        {market.outcomes.map((outcome: string, i: number) => (
+                            <div key={i} className="flex items-center gap-2 bg-white/5 border border-border rounded-lg px-4 py-2">
+                                <span className="text-white font-semibold">{outcome}</span>
+                                <span className={`text-lg font-bold ml-2 ${parseFloat(market.outcomePrices?.[i] || "0") > 50 ? 'text-positive' : 'text-negative'
+                                    }`}>
+                                    {market.outcomePrices?.[i] || "N/A"}¢
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col xl:flex-row gap-6 flex-1 min-h-0">
-                {/* Advanced Chart */}
+                {/* Chart */}
                 <div className="flex-1 glass-panel p-6 flex flex-col min-h-[400px]">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block">Advanced Probability History</h2>
+                        <h2 className="text-lg font-semibold border-b-2 border-primary pb-1 inline-block flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                            Probability History
+                        </h2>
                     </div>
                     <div className="flex-1 min-h-0 w-full">
-                        {isLoading ? (
+                        {chartLoading ? (
                             <div className="w-full h-full flex items-center justify-center">
                                 <div className="text-muted flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+                                    <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                                     Loading historical data...
                                 </div>
                             </div>
+                        ) : chartData && chartData.length > 0 ? (
+                            <PriceChart data={chartData} />
                         ) : (
-                            <PriceChart data={chartData || []} />
+                            <div className="w-full h-full flex flex-col items-center justify-center text-muted gap-2">
+                                <BarChart2 className="w-10 h-10 opacity-30" />
+                                <p className="text-sm">No historical data available for this market.</p>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -84,7 +140,7 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                 <div className="w-full xl:w-96 flex flex-col gap-6">
                     {hasLagSignal && (
                         <div className="glass-panel p-6 border-primary/50 bg-primary/5 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="bg-primary/20 p-2 rounded-full">
                                     <Activity className="w-6 h-6 text-primary animate-pulse" />
@@ -104,9 +160,36 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                     )}
 
                     <div className="glass-panel p-6 flex-1">
-                        <h3 className="font-semibold text-white mb-4 border-b border-border pb-2">Correlated News</h3>
-                        <div className="space-y-4">
-                            <p className="text-sm text-muted italic">Click "Discuss with AI" on any news item in the right sidebar to analyze its effect on this specific market.</p>
+                        <h3 className="font-semibold text-white mb-4 border-b border-border pb-2 flex items-center gap-2">
+                            <ExternalLink className="w-4 h-4 text-muted" />
+                            Market Info
+                        </h3>
+                        <div className="space-y-3 text-sm">
+                            {market?.endDate && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted">End Date</span>
+                                    <span className="text-white font-semibold">{market.endDate}</span>
+                                </div>
+                            )}
+                            {market?.volume24hr && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted">24hr Volume</span>
+                                    <span className="text-white font-semibold">{market.volume24hr}</span>
+                                </div>
+                            )}
+                            <div className="pt-2 border-t border-border">
+                                <a
+                                    href={`https://polymarket.com/market/${market?.slug || conditionId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors text-sm font-semibold"
+                                >
+                                    View on Polymarket <ExternalLink className="w-3 h-3" />
+                                </a>
+                            </div>
+                        </div>
+                        <div className="mt-6">
+                            <p className="text-sm text-muted italic">Click "Discuss with AI" on any news item in the sidebar to analyze its effect on this specific market.</p>
                         </div>
                     </div>
                 </div>
