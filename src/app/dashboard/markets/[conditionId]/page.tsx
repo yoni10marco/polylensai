@@ -271,7 +271,7 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
 
                     {/* AI Chat Panel */}
                     {!isLoading && (
-                        <MarketChat marketContext={marketContext} />
+                        <MarketChat marketContext={marketContext} conditionId={conditionId} />
                     )}
                 </div>
             </div>

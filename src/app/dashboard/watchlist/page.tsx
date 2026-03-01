@@ -1,42 +1,65 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchActiveMarketsAction } from "@/lib/actions";
+import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { Star, TrendingUp, ArrowUpRight, BarChart2, Activity } from "lucide-react";
 
 function WatchlistContent() {
-    const [watchlist, setWatchlist] = useState<string[]>([]);
+    const supabase = createClient();
+    const queryClient = useQueryClient();
 
-    // Client-side hydration for localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('polylens_watchlist');
-        if (saved) {
-            try {
-                setWatchlist(JSON.parse(saved));
-            } catch (e) {
-                console.error("Failed to parse watchlist", e);
-            }
-        }
-    }, []);
-
-    const toggleWatchlist = (e: React.MouseEvent, id: string) => {
-        e.preventDefault();
-        setWatchlist(prev => {
-            const next = prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id];
-            localStorage.setItem('polylens_watchlist', JSON.stringify(next));
-            return next;
-        });
-    };
-
-    const { data: markets, isLoading } = useQuery({
-        queryKey: ['activeMarkets'],
-        queryFn: () => fetchActiveMarketsAction(50),
-        refetchInterval: 300000, // 5 min
+    // Fetch watchlist condition IDs from Supabase
+    const { data: watchlist = [], isLoading: watchlistLoading } = useQuery({
+        queryKey: ['watchlist'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("watchlists")
+                .select("condition_id");
+            if (error) throw error;
+            return (data || []).map((r: any) => r.condition_id as string);
+        },
     });
 
-    const filteredMarkets = markets?.filter((market: any) => watchlist.includes(market.id.toString()));
+    // Add to watchlist
+    const addMutation = useMutation({
+        mutationFn: async ({ condition_id, market_title }: { condition_id: string; market_title: string }) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Not logged in");
+            const { error } = await supabase.from("watchlists").insert({ user_id: user.id, condition_id, market_title });
+            if (error && error.code !== "23505") throw error; // ignore unique conflict
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+    });
+
+    // Remove from watchlist
+    const removeMutation = useMutation({
+        mutationFn: async (condition_id: string) => {
+            const { error } = await supabase.from("watchlists").delete().eq("condition_id", condition_id);
+            if (error) throw error;
+        },
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+    });
+
+    function toggleWatchlist(e: React.MouseEvent, conditionId: string, title: string) {
+        e.preventDefault();
+        if (watchlist.includes(conditionId)) {
+            removeMutation.mutate(conditionId);
+        } else {
+            addMutation.mutate({ condition_id: conditionId, market_title: title });
+        }
+    }
+
+    const { data: markets, isLoading: marketsLoading } = useQuery({
+        queryKey: ['activeMarkets'],
+        queryFn: () => fetchActiveMarketsAction(50),
+        refetchInterval: 300000,
+    });
+
+    const isLoading = watchlistLoading || marketsLoading;
+    const filteredMarkets = markets?.filter((m: any) => watchlist.includes(m.conditionId));
 
     return (
         <div className="flex flex-col gap-6 h-full w-full max-w-7xl mx-auto pb-12">
@@ -46,9 +69,8 @@ function WatchlistContent() {
                         <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
                         My Watchlist
                     </h1>
-                    <p className="text-muted text-sm">Your hand-picked markets and custom alpha signals.</p>
+                    <p className="text-muted text-sm">Your hand-picked markets — synced across all your devices.</p>
                 </div>
-
                 <Link href="/dashboard/markets" className="text-primary text-sm font-semibold hover:text-white transition-colors bg-primary/10 px-4 py-2 rounded-md">
                     Explore More Markets
                 </Link>
@@ -68,60 +90,50 @@ function WatchlistContent() {
                     ))
                 ) : filteredMarkets && filteredMarkets.length > 0 ? (
                     filteredMarkets.map((market: any) => (
-                        <Link href={`/dashboard/markets/${market.conditionId}`} key={market.id} className="group glass-panel p-6 flex flex-col hover:border-primary/50 transition-colors relative overflow-hidden min-h-[220px]">
+                        <Link href={`/dashboard/markets/${market.conditionId}`} key={market.conditionId} className="group glass-panel p-6 flex flex-col hover:border-primary/50 transition-colors relative overflow-hidden min-h-[220px]">
                             <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-
                             <div className="flex justify-between items-start mb-4 gap-4">
                                 <h3 className="text-lg font-bold text-white leading-tight group-hover:text-primary transition-colors line-clamp-3">
                                     {market?.title}
                                 </h3>
-                                <div className="flex flex-col items-end gap-2">
-                                    <button
-                                        onClick={(e) => toggleWatchlist(e, market?.id?.toString())}
-                                        className="text-muted hover:text-yellow-400 transition-colors z-10"
-                                    >
-                                        <Star className={`w-5 h-5 ${watchlist.includes(market?.id?.toString()) ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                                    </button>
-                                    <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${market.sentiment === 'Positive' ? 'bg-positive/20 text-positive' :
-                                        market.sentiment === 'Negative' ? 'bg-negative/20 text-negative' :
-                                            'bg-white/10 text-muted'
-                                        }`}>
-                                        <Activity className="w-3 h-3" />
-                                        {market.sentiment}
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={(e) => toggleWatchlist(e, market.conditionId, market.title)}
+                                    className="shrink-0 p-1.5 rounded-full hover:bg-yellow-500/20 transition-colors"
+                                >
+                                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                                </button>
                             </div>
-
-                            <div className="text-xs font-semibold text-muted uppercase tracking-wider mb-auto">
-                                {market?.category}
+                            <div className="flex items-center gap-2 mb-auto">
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/10 text-muted border border-border">
+                                    {market.category}
+                                </span>
                             </div>
-
-                            <div className="mt-6 flex justify-between items-end border-t border-border/50 pt-4">
-                                <div className="flex flex-col">
-                                    <span className="text-xs text-muted mb-1">PROBABILITY</span>
-                                    {market?.probability === "N/A" ? (
-                                        <div className="bg-white/10 text-muted px-2 py-1 rounded-sm text-sm font-bold inline-block self-start mt-1">N/A</div>
-                                    ) : (
-                                        <div className={`flex items-center gap-1 font-extrabold px-2 py-1 rounded-sm text-xl mt-1 self-start ${parseFloat(market?.probability) > 50 ? 'bg-positive/20 text-positive' : 'bg-negative/20 text-negative'}`}>
-                                            {market?.probability}%
-                                            {parseFloat(market?.probability) > 50 ? <ArrowUpRight className="w-5 h-5 opacity-80" /> : null}
-                                        </div>
-                                    )}
+                            <div className="flex items-end justify-between mt-4 pt-4 border-t border-border">
+                                <div>
+                                    <p className="text-muted text-xs mb-0.5">Probability (Yes)</p>
+                                    <p className={`text-3xl font-extrabold ${parseFloat(market.probability) > 50 ? 'text-positive' : 'text-negative'}`}>
+                                        {market.probability !== "N/A" ? `${market.probability}%` : "N/A"}
+                                    </p>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-xs text-muted mb-1 flex items-center gap-1"><BarChart2 className="w-3 h-3" /> VOL</span>
-                                    <span className="text-sm font-bold text-gray-300">{market?.volume || "$0"}</span>
+                                <div className="text-right">
+                                    <p className="text-muted text-xs mb-0.5 flex items-center gap-1 justify-end"><BarChart2 className="w-3 h-3" />Volume</p>
+                                    <p className="text-white font-bold">{market.volume}</p>
                                 </div>
                             </div>
                         </Link>
                     ))
                 ) : (
-                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-center glass-panel border-dashed border-border group hover:border-primary/30 transition-colors">
-                        <Star className="w-16 h-16 fill-transparent stroke-muted mb-4 group-hover:stroke-primary group-hover:fill-primary/20 transition-all" />
-                        <h3 className="text-xl font-bold text-white mb-2">Your Watchlist is Empty</h3>
-                        <p className="text-sm text-gray-400 max-w-md">
-                            Start adding markets you care about by clicking the Star icon on the Global Markets page to track custom alpha signals.
-                        </p>
+                    <div className="col-span-full flex flex-col items-center justify-center glass-panel p-16 text-center gap-4">
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-full">
+                            <Star className="w-10 h-10 text-yellow-400" />
+                        </div>
+                        <div>
+                            <p className="text-lg font-semibold text-white mb-1">Your watchlist is empty</p>
+                            <p className="text-muted text-sm">Star markets from the Markets page to track them here.</p>
+                        </div>
+                        <Link href="/dashboard/markets" className="mt-2 px-5 py-2.5 bg-primary/20 text-primary border border-primary/30 rounded-lg font-semibold text-sm hover:bg-primary/30 transition-colors">
+                            Browse Markets
+                        </Link>
                     </div>
                 )}
             </div>
@@ -130,9 +142,5 @@ function WatchlistContent() {
 }
 
 export default function WatchlistPage() {
-    return (
-        <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-muted">Loading watchlist...</div>}>
-            <WatchlistContent />
-        </Suspense>
-    );
+    return <WatchlistContent />;
 }

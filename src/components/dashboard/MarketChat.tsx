@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Bot, User, Send, Sparkles, Loader2, MessageSquare } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 interface Message {
     id: string;
@@ -19,6 +20,7 @@ interface MarketContext {
 
 interface MarketChatProps {
     marketContext: MarketContext;
+    conditionId: string; // needed to scope chat history per market
 }
 
 const QUICK_STARTS = [
@@ -28,17 +30,56 @@ const QUICK_STARTS = [
     "What news is driving this?",
 ];
 
-export default function MarketChat({ marketContext }: MarketChatProps) {
+export default function MarketChat({ marketContext, conditionId }: MarketChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const supabase = createClient();
 
-    // Auto-scroll to bottom on new messages
+    // Load chat history on mount
+    useEffect(() => {
+        async function loadHistory() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { setHistoryLoaded(true); return; }
+
+            const { data, error } = await supabase
+                .from("chat_history")
+                .select("id, role, content, created_at")
+                .eq("user_id", user.id)
+                .eq("condition_id", conditionId)
+                .order("created_at", { ascending: true })
+                .limit(40);
+
+            if (!error && data) {
+                setMessages(data.map((row: any) => ({
+                    id: row.id,
+                    role: row.role as "user" | "assistant",
+                    text: row.content,
+                })));
+            }
+            setHistoryLoaded(true);
+        }
+        loadHistory();
+    }, [conditionId]);
+
+    // Auto-scroll
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    async function persistMessage(role: "user" | "assistant", content: string) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("chat_history").insert({
+            user_id: user.id,
+            condition_id: conditionId,
+            role,
+            content,
+        });
+    }
 
     async function sendMessage(text: string) {
         if (!text.trim() || isStreaming) return;
@@ -48,21 +89,13 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
             role: "user",
             text: text.trim(),
         };
-
         const assistantId = (Date.now() + 1).toString();
-        const assistantPlaceholder: Message = {
-            id: assistantId,
-            role: "assistant",
-            text: "",
-            streaming: true,
-        };
+        const assistantPlaceholder: Message = { id: assistantId, role: "assistant", text: "", streaming: true };
 
-        const newMessages = [...messages, userMessage, assistantPlaceholder];
-        setMessages(newMessages);
+        setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
         setInput("");
         setIsStreaming(true);
 
-        // Build history excluding the new assistant placeholder
         const history = messages.map((m) => ({ role: m.role, text: m.text }));
 
         try {
@@ -79,9 +112,7 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
                 }),
             });
 
-            if (!res.ok || !res.body) {
-                throw new Error("Stream failed");
-            }
+            if (!res.ok || !res.body) throw new Error("Stream failed");
 
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
@@ -90,22 +121,20 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                accumulated += chunk;
-
+                accumulated += decoder.decode(value, { stream: true });
                 setMessages((prev) =>
-                    prev.map((m) =>
-                        m.id === assistantId ? { ...m, text: accumulated, streaming: true } : m
-                    )
+                    prev.map((m) => m.id === assistantId ? { ...m, text: accumulated, streaming: true } : m)
                 );
             }
 
-            // Mark streaming as done
             setMessages((prev) =>
-                prev.map((m) =>
-                    m.id === assistantId ? { ...m, text: accumulated, streaming: false } : m
-                )
+                prev.map((m) => m.id === assistantId ? { ...m, text: accumulated, streaming: false } : m)
             );
+
+            // Persist both turns after stream completes
+            await persistMessage("user", text.trim());
+            await persistMessage("assistant", accumulated);
+
         } catch (err) {
             console.error("[MarketChat] Stream error:", err);
             setMessages((prev) =>
@@ -137,7 +166,7 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
                 </div>
                 <div>
                     <h3 className="font-semibold text-white text-sm leading-none">AI Market Chat</h3>
-                    <p className="text-xs text-muted mt-0.5">Powered by Gemini 2.5 Flash</p>
+                    <p className="text-xs text-muted mt-0.5">Powered by Gemini 2.5 Flash · History synced</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-positive animate-pulse" />
@@ -147,7 +176,13 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
 
             {/* Message Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                {messages.length === 0 ? (
+                {!historyLoaded ? (
+                    <div className="flex flex-col gap-3 py-4">
+                        {[70, 90, 60].map((w, i) => (
+                            <div key={i} className={`h-10 bg-white/5 rounded-xl animate-pulse ${i % 2 === 1 ? "ml-auto" : ""}`} style={{ width: `${w}%` }} />
+                        ))}
+                    </div>
+                ) : messages.length === 0 ? (
                     <EmptyState
                         marketTitle={marketContext.title}
                         onQuickStart={(q) => sendMessage(q)}
@@ -163,8 +198,8 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
                 )}
             </div>
 
-            {/* Quick starts (shown when there are messages too) */}
-            {messages.length > 0 && !isStreaming && (
+            {/* Quick starts (persistent) */}
+            {historyLoaded && messages.length > 0 && !isStreaming && (
                 <div className="px-4 pb-2 flex gap-2 flex-wrap shrink-0">
                     {QUICK_STARTS.slice(0, 2).map((q) => (
                         <button
@@ -197,11 +232,7 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
                         disabled={isStreaming || !input.trim()}
                         className="shrink-0 p-1.5 rounded-lg bg-primary text-black font-bold hover:bg-primary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
-                        {isStreaming ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <Send className="w-4 h-4" />
-                        )}
+                        {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                 </div>
                 <p className="text-xs text-muted/50 mt-1 text-center">Press Enter to send · Shift+Enter for new line</p>
@@ -212,24 +243,14 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
 
 function MessageBubble({ message }: { message: Message }) {
     const isUser = message.role === "user";
-
     return (
         <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-            {/* Avatar */}
             <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isUser ? "bg-primary/20" : "bg-white/10"}`}>
-                {isUser ? (
-                    <User className="w-3.5 h-3.5 text-primary" />
-                ) : (
-                    <Bot className="w-3.5 h-3.5 text-white" />
-                )}
+                {isUser ? <User className="w-3.5 h-3.5 text-primary" /> : <Bot className="w-3.5 h-3.5 text-white" />}
             </div>
-
-            {/* Bubble */}
-            <div
-                className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isUser
-                    ? "bg-primary/20 text-white border border-primary/30 rounded-tr-sm"
-                    : "bg-white/5 text-gray-200 border border-border rounded-tl-sm"
-                    }`}
+            <div className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isUser
+                ? "bg-primary/20 text-white border border-primary/30 rounded-tr-sm"
+                : "bg-white/5 text-gray-200 border border-border rounded-tl-sm"}`}
             >
                 {message.text || (
                     <span className="flex items-center gap-2 text-muted">
@@ -245,15 +266,7 @@ function MessageBubble({ message }: { message: Message }) {
     );
 }
 
-function EmptyState({
-    marketTitle,
-    onQuickStart,
-    disabled,
-}: {
-    marketTitle: string;
-    onQuickStart: (q: string) => void;
-    disabled: boolean;
-}) {
+function EmptyState({ marketTitle, onQuickStart, disabled }: { marketTitle: string; onQuickStart: (q: string) => void; disabled: boolean }) {
     return (
         <div className="flex flex-col items-center justify-center h-full gap-5 py-4">
             <div className="bg-primary/10 border border-primary/20 rounded-full p-4">

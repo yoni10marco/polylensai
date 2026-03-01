@@ -1,21 +1,40 @@
 "use client";
 
-import { BarChart3, BellRing, BookOpen, Compass, LayoutDashboard, Settings, User, Star } from "lucide-react";
+import { BarChart2, BellRing, BookOpen, Compass, LayoutDashboard, LogOut, Settings, User, Star } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Global Markets", href: "/dashboard/markets", icon: Compass },
     { name: "Watchlist", href: "/dashboard/watchlist", icon: Star },
-    { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+    { name: "Analytics", href: "/dashboard/analytics", icon: BarChart2 },
     { name: "Alerts", href: "/dashboard/alerts", icon: BellRing },
     { name: "Data Guide", href: "/dashboard/guide", icon: BookOpen },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
+    const supabase = createClient();
+    const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [signingOut, setSigningOut] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            setUserEmail(data.user?.email ?? null);
+        });
+    }, []);
+
+    async function handleSignOut() {
+        setSigningOut(true);
+        await supabase.auth.signOut();
+        router.push("/login");
+        router.refresh();
+    }
 
     return (
         <aside className="w-64 border-r border-border bg-surface flex flex-col">
@@ -32,7 +51,7 @@ export default function Sidebar() {
                     Menu
                 </div>
                 {NAV_ITEMS.map((item) => {
-                    const isActive = pathname === item.href;
+                    const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
                     return (
                         <Link
                             key={item.name}
@@ -52,17 +71,34 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-4 border-t border-border space-y-1">
-                <Link href="/" className="flex items-center justify-center gap-2 mb-4 w-full py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors">
+                {/* User info */}
+                {userEmail && (
+                    <div className="flex items-center gap-2.5 px-3 py-2 mb-2 rounded-lg bg-white/5 border border-border">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <User className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-white text-xs font-semibold truncate">{userEmail}</p>
+                            <p className="text-muted text-[10px]">Free plan</p>
+                        </div>
+                    </div>
+                )}
+
+                <Link href="/" className="flex items-center justify-center gap-2 w-full py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors">
                     Back to Website
-                </Link>
-                <Link href="/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
-                    <User className="w-5 h-5" />
-                    Profile
                 </Link>
                 <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
                     <Settings className="w-5 h-5" />
                     Settings
                 </Link>
+                <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                >
+                    <LogOut className="w-5 h-5" />
+                    {signingOut ? "Signing out…" : "Sign Out"}
+                </button>
             </div>
         </aside>
     );
