@@ -14,6 +14,7 @@ interface MarketContext {
     title: string;
     probability: string;
     headlines?: string[];
+    priceHistory?: { time: string; price: number }[];
 }
 
 interface MarketChatProps {
@@ -71,7 +72,10 @@ export default function MarketChat({ marketContext }: MarketChatProps) {
                 body: JSON.stringify({
                     message: text.trim(),
                     history,
-                    marketContext,
+                    marketContext: {
+                        ...marketContext,
+                        priceHistory: marketContext.priceHistory?.slice(-10) ?? [],
+                    },
                 }),
             });
 
@@ -223,8 +227,8 @@ function MessageBubble({ message }: { message: Message }) {
             {/* Bubble */}
             <div
                 className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${isUser
-                        ? "bg-primary/20 text-white border border-primary/30 rounded-tr-sm"
-                        : "bg-white/5 text-gray-200 border border-border rounded-tl-sm"
+                    ? "bg-primary/20 text-white border border-primary/30 rounded-tr-sm"
+                    : "bg-white/5 text-gray-200 border border-border rounded-tl-sm"
                     }`}
             >
                 {message.text || (

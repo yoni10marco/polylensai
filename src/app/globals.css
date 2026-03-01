@@ -3,13 +3,27 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-white antialiased;
+    scroll-snap-type: none;
   }
 }
 
 @layer utilities {
   .glass-panel {
     @apply bg-surface/80 backdrop-blur-md border border-border rounded-xl;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

@@ -41,8 +41,8 @@ export default function PriceChart({ data }: { data: ChartPoint[] }) {
                     tick={{ fill: '#9ca3af', fontSize: 12 }}
                     tickLine={false}
                     axisLine={false}
-                    domain={['auto', 'auto']}
-                    tickFormatter={(value) => `${value}¢`}
+                    domain={[0, 100]}
+                    tickFormatter={(value) => `${value}%`}
                     dx={-10}
                 />
                 <Tooltip
@@ -54,7 +54,7 @@ export default function PriceChart({ data }: { data: ChartPoint[] }) {
                     }}
                     itemStyle={{ color: '#00e5ff', fontWeight: 'bold' }}
                     labelStyle={{ color: '#9ca3af', marginBottom: '4px' }}
-                    formatter={(value: number) => [`${value}¢`, 'Probability/Price']}
+                    formatter={(value: number) => [`${value}%`, 'Probability']}
                 />
                 <Area
                     type="monotone"
