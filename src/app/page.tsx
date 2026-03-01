@@ -34,7 +34,7 @@ export default function LandingPage() {
                     </div>
 
                     <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-                        Trade with <br />
+                        Analyze with <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-indigo-400 drop-shadow-sm">
                             AI-Powered Alpha.
                         </span>
@@ -45,7 +45,7 @@ export default function LandingPage() {
 
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <Link href="/dashboard" className="flex items-center gap-2 px-8 py-4 bg-primary text-background rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_30px_rgba(56,189,248,0.3)]">
-                            Start Trading <ArrowRight className="w-5 h-5" />
+                            Start Analyzing <ArrowRight className="w-5 h-5" />
                         </Link>
                         <a href="#features" className="px-8 py-4 bg-surface border border-border rounded-full font-medium text-white hover:bg-white/5 transition-colors">
                             View Features

@@ -99,7 +99,11 @@ export default function Sidebar() {
                 <Link href="/" className="flex items-center justify-center gap-2 w-full py-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors">
                     Back to Website
                 </Link>
-                <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
+                <Link href="/dashboard/profile" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
+                    <User className="w-5 h-5" />
+                    Profile
+                </Link>
+                <Link href="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg font-medium text-muted hover:text-white hover:bg-white/5 transition-colors">
                     <Settings className="w-5 h-5" />
                     Settings
                 </Link>
