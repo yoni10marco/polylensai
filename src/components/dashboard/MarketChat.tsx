@@ -110,16 +110,15 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
     async function sendMessage(text: string) {
         if (!text.trim() || isStreaming) return;
 
-        // Check rate limit before sending
-        const checkRes = await fetch("/api/chat-usage", { method: "POST" });
-        const checkData = await checkRes.json();
-
-        if (!checkData.allowed) {
-            setShowUpgrade(true);
-            return;
-        }
-
-        setUsedToday(checkData.used);
+        // Check rate limit — fail-open so auth/server errors don't silently block messages
+        try {
+            const checkRes = await fetch("/api/chat-usage", { method: "POST" });
+            if (checkRes.ok) {
+                const checkData = await checkRes.json();
+                if (checkData.allowed === false) { setShowUpgrade(true); return; }
+                if (checkData.used != null) setUsedToday(checkData.used);
+            }
+        } catch { /* network error — allow the message through */ }
 
         const userMessage: Message = { id: Date.now().toString(), role: "user", text: text.trim() };
         const assistantId = (Date.now() + 1).toString();

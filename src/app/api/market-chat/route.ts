@@ -64,7 +64,7 @@ Rules:
 - If you use web search results, synthesize them naturally without listing sources.`;
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             systemInstruction,
             tools: [{ googleSearch: {} }],
         } as any);
@@ -100,8 +100,8 @@ Rules:
                 "Cache-Control": "no-cache",
             },
         });
-    } catch (error) {
-        console.error("[market-chat] Error:", error);
-        return NextResponse.json({ error: "Failed to generate AI response." }, { status: 500 });
+    } catch (error: any) {
+        console.error("[market-chat] Error:", error?.message || error);
+        return NextResponse.json({ error: "Failed to generate AI response.", detail: error?.message }, { status: 500 });
     }
 }
