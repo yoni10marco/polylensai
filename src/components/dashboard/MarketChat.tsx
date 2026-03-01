@@ -35,6 +35,7 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
     const [input, setInput] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
+    const [dbError, setDbError] = useState(false); // true if chat_history table missing
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const supabase = createClient();
@@ -53,7 +54,13 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
                 .order("created_at", { ascending: true })
                 .limit(40);
 
-            if (!error && data) {
+            if (error) {
+                console.warn("[MarketChat] Failed to load history:", error.message, error.code);
+                // Table likely doesn't exist yet — show banner
+                if (error.code === "42P01" || error.message?.includes("does not exist")) {
+                    setDbError(true);
+                }
+            } else if (data) {
                 setMessages(data.map((row: any) => ({
                     id: row.id,
                     role: row.role as "user" | "assistant",
@@ -73,12 +80,16 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
     async function persistMessage(role: "user" | "assistant", content: string) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        await supabase.from("chat_history").insert({
+        const { error } = await supabase.from("chat_history").insert({
             user_id: user.id,
             condition_id: conditionId,
             role,
             content,
         });
+        if (error) {
+            console.warn("[MarketChat] Failed to persist message:", error.message, error.code);
+            if (error.code === "42P01" || error.message?.includes("does not exist")) setDbError(true);
+        }
     }
 
     async function sendMessage(text: string) {
@@ -166,13 +177,23 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
                 </div>
                 <div>
                     <h3 className="font-semibold text-white text-sm leading-none">AI Market Chat</h3>
-                    <p className="text-xs text-muted mt-0.5">Powered by Gemini 2.5 Flash · History synced</p>
+                    <p className="text-xs text-muted mt-0.5">
+                        {dbError ? "History unavailable — DB not set up" : "Powered by Gemini 2.5 Flash · History synced"}
+                    </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full bg-positive animate-pulse" />
                     <span className="text-xs text-muted">Live</span>
                 </div>
             </div>
+
+            {/* DB setup warning banner */}
+            {dbError && (
+                <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs leading-relaxed shrink-0">
+                    ⚠️ Chat history requires the <span className="font-mono font-bold">chat_history</span> table in Supabase.
+                    Run the SQL from the implementation plan, then refresh.
+                </div>
+            )}
 
             {/* Message Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
