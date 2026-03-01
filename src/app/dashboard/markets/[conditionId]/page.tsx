@@ -3,8 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchMarketPriceHistoryAction, fetchMarketByConditionId } from "@/lib/actions";
 import PriceChart from "@/components/dashboard/PriceChart";
+import MarketChat from "@/components/dashboard/MarketChat";
 import { ArrowUpRight, Activity, TrendingUp, BarChart2, ExternalLink } from "lucide-react";
-import Link from "next/link";
 
 export default function MarketDetailPage({ params }: { params: { conditionId: string } }) {
     const { conditionId } = params;
@@ -23,6 +23,13 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
     const isLoading = marketLoading || chartLoading;
     const currentPrice = chartData && chartData.length > 0 ? chartData[chartData.length - 1].price : null;
     const hasLagSignal = true;
+
+    // Build market context for the AI chat
+    const marketContext = {
+        title: market?.title || "This market",
+        probability: market?.probability || "N/A",
+        headlines: [] as string[], // could be extended with real news in the future
+    };
 
     if (!isLoading && !market) {
         return (
@@ -66,12 +73,12 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                             <div className="h-10 bg-white/5 rounded w-24 animate-pulse" />
                         ) : (
                             <div className={`flex items-center gap-1 text-3xl font-extrabold px-3 py-1 rounded-lg ${market?.probability !== "N/A" && parseFloat(market?.probability || "0") > 50
-                                    ? 'text-positive'
-                                    : market?.probability === "N/A"
-                                        ? 'text-muted'
-                                        : 'text-negative'
+                                ? 'text-positive'
+                                : market?.probability === "N/A"
+                                    ? 'text-muted'
+                                    : 'text-negative'
                                 }`}>
-                                {market?.probability === "N/A" ? "N/A" : `${market?.probability}¢`}
+                                {market?.probability === "N/A" ? "N/A" : `${market?.probability}%`}
                                 {currentPrice && currentPrice > 50 && <ArrowUpRight className="w-6 h-6 text-positive" />}
                             </div>
                         )}
@@ -100,7 +107,7 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                                 <span className="text-white font-semibold">{outcome}</span>
                                 <span className={`text-lg font-bold ml-2 ${parseFloat(market.outcomePrices?.[i] || "0") > 50 ? 'text-positive' : 'text-negative'
                                     }`}>
-                                    {market.outcomePrices?.[i] || "N/A"}¢
+                                    {market.outcomePrices?.[i] || "N/A"}%
                                 </span>
                             </div>
                         ))}
@@ -136,7 +143,7 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                     </div>
                 </div>
 
-                {/* Signal Box & Stats */}
+                {/* Right Column: Signal + Info + AI Chat */}
                 <div className="w-full xl:w-96 flex flex-col gap-6">
                     {hasLagSignal && (
                         <div className="glass-panel p-6 border-primary/50 bg-primary/5 relative overflow-hidden group">
@@ -159,7 +166,7 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                         </div>
                     )}
 
-                    <div className="glass-panel p-6 flex-1">
+                    <div className="glass-panel p-6">
                         <h3 className="font-semibold text-white mb-4 border-b border-border pb-2 flex items-center gap-2">
                             <ExternalLink className="w-4 h-4 text-muted" />
                             Market Info
@@ -188,10 +195,12 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                                 </a>
                             </div>
                         </div>
-                        <div className="mt-6">
-                            <p className="text-sm text-muted italic">Click "Discuss with AI" on any news item in the sidebar to analyze its effect on this specific market.</p>
-                        </div>
                     </div>
+
+                    {/* AI Chat Panel */}
+                    {!isLoading && (
+                        <MarketChat marketContext={marketContext} />
+                    )}
                 </div>
             </div>
         </div>
