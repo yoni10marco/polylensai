@@ -61,7 +61,7 @@ function MarketsContent() {
         },
     });
 
-    const toggleMutation = useMutation({
+    const toggleMutation = useMutation<void, Error, { conditionId: string; title: string; starred: boolean }>({
         mutationFn: async ({ conditionId, title, starred }: { conditionId: string; title: string; starred: boolean }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
