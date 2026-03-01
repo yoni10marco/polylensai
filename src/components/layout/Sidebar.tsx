@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BellRing, Compass, LayoutDashboard, Settings, User, Star } from "lucide-react";
+import { BarChart3, BellRing, BookOpen, Compass, LayoutDashboard, Settings, User, Star } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
     { name: "Watchlist", href: "/dashboard/watchlist", icon: Star },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
     { name: "Alerts", href: "/dashboard/alerts", icon: BellRing },
+    { name: "Data Guide", href: "/dashboard/guide", icon: BookOpen },
 ];
 
 export default function Sidebar() {

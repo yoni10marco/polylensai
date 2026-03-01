@@ -38,6 +38,11 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
     const currentPrice = chartData && chartData.length > 0 ? chartData[chartData.length - 1].price : null;
     const lagSignal = computeLagSignal(chartData);
 
+    // Detect expired / resolved markets
+    const isExpired = market?.endDate
+        ? new Date(market.endDate).getTime() < Date.now()
+        : false;
+
     const marketContext = {
         title: market?.title || "This market",
         probability: market?.probability || "N/A",
@@ -74,7 +79,14 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                         </div>
                     ) : (
                         <>
-                            {/* Event title — the "what is this about" */}
+                            {/* Expired badge */}
+                            {isExpired && (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-3 rounded-full bg-yellow-500/15 border border-yellow-500/30 text-yellow-400 text-xs font-bold uppercase tracking-widest">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                    Market Resolved / Expired
+                                </div>
+                            )}
+                            {/* Event title */}
                             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-1 leading-tight">
                                 {market?.title}
                             </h1>
@@ -95,12 +107,16 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                         <span className="text-muted text-xs uppercase tracking-wider font-semibold mb-1">Probability (Yes)</span>
                         {isLoading ? (
                             <div className="h-10 bg-white/5 rounded w-24 animate-pulse" />
+                        ) : isExpired ? (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-lg font-bold">
+                                Resolved
+                            </div>
                         ) : (
                             <div className={`flex items-center gap-1 text-3xl font-extrabold px-3 py-1 rounded-lg ${market?.probability !== "N/A" && parseFloat(market?.probability || "0") > 50
-                                    ? 'text-positive'
-                                    : market?.probability === "N/A"
-                                        ? 'text-muted'
-                                        : 'text-negative'
+                                ? 'text-positive'
+                                : market?.probability === "N/A"
+                                    ? 'text-muted'
+                                    : 'text-negative'
                                 }`}>
                                 {market?.probability === "N/A" ? "N/A" : `${market?.probability}%`}
                                 {currentPrice && currentPrice > 50 && <ArrowUpRight className="w-6 h-6 text-positive" />}
@@ -198,8 +214,8 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                                         <Zap className="w-3 h-3" /> Signal Strength
                                     </span>
                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${lagSignal.strength === 3 ? 'bg-positive/20 text-positive' :
-                                            lagSignal.strength === 2 ? 'bg-yellow-500/20 text-yellow-400' :
-                                                'bg-white/10 text-muted'
+                                        lagSignal.strength === 2 ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-white/10 text-muted'
                                         }`}>{lagSignal.label}</span>
                                 </div>
                                 <div className="flex gap-1.5">
@@ -207,12 +223,12 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                                         <div
                                             key={bar}
                                             className={`flex-1 h-2 rounded-full transition-all ${bar <= lagSignal.strength
-                                                    ? lagSignal.strength === 3
-                                                        ? 'bg-positive shadow-[0_0_8px_rgba(0,229,180,0.6)]'
-                                                        : lagSignal.strength === 2
-                                                            ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]'
-                                                            : 'bg-white/40'
-                                                    : 'bg-white/10'
+                                                ? lagSignal.strength === 3
+                                                    ? 'bg-positive shadow-[0_0_8px_rgba(0,229,180,0.6)]'
+                                                    : lagSignal.strength === 2
+                                                        ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]'
+                                                        : 'bg-white/40'
+                                                : 'bg-white/10'
                                                 }`}
                                         />
                                     ))}

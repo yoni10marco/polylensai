@@ -60,20 +60,6 @@ export async function fetchActiveMarketsAction(limit = 50) {
         }
 
         console.log(`[fetchActiveMarketsAction] Fetched ${events.length} events.`);
-        if (events[0]) {
-            console.log("FIRST_EVENT_DEBUG:", JSON.stringify({
-                id: events[0].id,
-                title: events[0].title,
-                volume24hr: events[0].volume24hr,
-                tags: events[0].tags,
-                marketsCount: events[0].markets?.length,
-                firstMarket: events[0].markets?.[0] ? {
-                    conditionId: events[0].markets[0].conditionId,
-                    outcomePrices: events[0].markets[0].outcomePrices,
-                    volume: events[0].markets[0].volume,
-                } : null
-            }, null, 2));
-        }
 
         // Flatten: each event has a markets[] array. We take the FIRST market from each event
         // as the "primary" market for display purposes (the main Yes/No question)
@@ -102,8 +88,22 @@ export async function fetchActiveMarketsAction(limit = 50) {
             }));
         });
 
-        console.log(`[fetchActiveMarketsAction] Mapped ${mappedMarkets.length} markets.`);
-        return mappedMarkets;
+        console.log(`[fetchActiveMarketsAction] Mapped ${mappedMarkets.length} markets before filtering.`);
+
+        const now = Date.now();
+        const liveMarkets = mappedMarkets.filter((m: any) => {
+            // Drop markets whose endDate has already passed
+            if (m.endDate) {
+                const end = new Date(m.endDate).getTime();
+                if (!isNaN(end) && end < now) return false;
+            }
+            // Drop effectively dead markets (no probability + no volume)
+            if (m.probability === "N/A" && m.volume === "$0") return false;
+            return true;
+        });
+
+        console.log(`[fetchActiveMarketsAction] Returning ${liveMarkets.length} live markets.`);
+        return liveMarkets;
     } catch (error) {
         console.error("[fetchActiveMarketsAction] Failed:", error);
         return [];
