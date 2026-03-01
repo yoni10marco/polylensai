@@ -35,7 +35,7 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
     const [input, setInput] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(false);
-    const [dbError, setDbError] = useState(false); // true if chat_history table missing
+    const [dbErrorMsg, setDbErrorMsg] = useState<string | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const supabase = createClient();
@@ -56,10 +56,7 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
 
             if (error) {
                 console.warn("[MarketChat] Failed to load history:", error.message, error.code);
-                // Table likely doesn't exist yet — show banner
-                if (error.code === "42P01" || error.message?.includes("does not exist")) {
-                    setDbError(true);
-                }
+                setDbErrorMsg(`Load error [${error.code}]: ${error.message}`);
             } else if (data) {
                 setMessages(data.map((row: any) => ({
                     id: row.id,
@@ -88,7 +85,7 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
         });
         if (error) {
             console.warn("[MarketChat] Failed to persist message:", error.message, error.code);
-            if (error.code === "42P01" || error.message?.includes("does not exist")) setDbError(true);
+            setDbErrorMsg(`Save error [${error.code}]: ${error.message}`);
         }
     }
 
@@ -178,7 +175,7 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
                 <div>
                     <h3 className="font-semibold text-white text-sm leading-none">AI Market Chat</h3>
                     <p className="text-xs text-muted mt-0.5">
-                        {dbError ? "History unavailable — DB not set up" : "Powered by Gemini 2.5 Flash · History synced"}
+                        {dbErrorMsg ? "History unavailable — DB error" : "Powered by Gemini 2.5 Flash · History synced"}
                     </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
@@ -187,11 +184,10 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
                 </div>
             </div>
 
-            {/* DB setup warning banner */}
-            {dbError && (
-                <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs leading-relaxed shrink-0">
-                    ⚠️ Chat history requires the <span className="font-mono font-bold">chat_history</span> table in Supabase.
-                    Run the SQL from the implementation plan, then refresh.
+            {/* DB error banner — shows actual Supabase error for debugging */}
+            {dbErrorMsg && (
+                <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs leading-relaxed shrink-0 font-mono">
+                    ⚠️ {dbErrorMsg}
                 </div>
             )}
 
