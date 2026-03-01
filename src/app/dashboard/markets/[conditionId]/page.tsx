@@ -97,7 +97,6 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                                     {market.question}
                                 </p>
                             )}
-                            <p className="text-muted text-xs font-mono break-all mt-2 opacity-50">{conditionId}</p>
                         </>
                     )}
                 </div>
@@ -247,7 +246,9 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                             {market?.endDate && (
                                 <div className="flex justify-between">
                                     <span className="text-muted">End Date</span>
-                                    <span className="text-white font-semibold">{market.endDate}</span>
+                                    <span className="text-white font-semibold">
+                                        {new Date(market.endDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                                    </span>
                                 </div>
                             )}
                             {market?.volume24hr && (
