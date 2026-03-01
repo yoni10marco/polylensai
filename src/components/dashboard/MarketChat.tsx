@@ -10,8 +10,15 @@ interface Message {
     streaming?: boolean;
 }
 
+interface MarketContext {
+    title: string;
+    probability: string;
+    headlines: string[];
+    priceHistory: { time: string; price: number }[];
+}
+
 interface MarketChatProps {
-    marketContext: string;
+    marketContext: MarketContext | string;
     conditionId: string;
 }
 
@@ -55,8 +62,8 @@ function MessageBubble({ message }: { message: Message }) {
                 </div>
             )}
             <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${isUser
-                    ? "bg-primary/15 border border-primary/25 text-white rounded-br-sm"
-                    : "bg-white/5 border border-white/8 text-gray-200 rounded-bl-sm"
+                ? "bg-primary/15 border border-primary/25 text-white rounded-br-sm"
+                : "bg-white/5 border border-white/8 text-gray-200 rounded-bl-sm"
                 }`}>
                 {message.text}
                 {message.streaming && (
@@ -200,10 +207,10 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
                         {/* Usage badge for free users */}
                         {usageLoaded && tier === "free" && limit !== null && (
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${remaining === 0
-                                    ? "text-red-400 border-red-400/30 bg-red-400/10"
-                                    : remaining === 1
-                                        ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"
-                                        : "text-primary border-primary/30 bg-primary/10"
+                                ? "text-red-400 border-red-400/30 bg-red-400/10"
+                                : remaining === 1
+                                    ? "text-yellow-400 border-yellow-400/30 bg-yellow-400/10"
+                                    : "text-primary border-primary/30 bg-primary/10"
                                 }`}>
                                 {remaining}/{limit} left
                             </span>
