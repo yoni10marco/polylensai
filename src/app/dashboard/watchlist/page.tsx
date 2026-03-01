@@ -34,13 +34,25 @@ function WatchlistContent() {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
     });
 
-    // Remove from watchlist
+    // Remove from watchlist (with optimistic update)
     const removeMutation = useMutation({
         mutationFn: async (condition_id: string) => {
-            const { error } = await supabase.from("watchlists").delete().eq("condition_id", condition_id);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { error } = await supabase.from("watchlists").delete()
+                .eq("user_id", user.id).eq("condition_id", condition_id);
             if (error) throw error;
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+        onMutate: async (condition_id) => {
+            await queryClient.cancelQueries({ queryKey: ['watchlist'] });
+            const prev = queryClient.getQueryData<string[]>(['watchlist']) || [];
+            queryClient.setQueryData<string[]>(['watchlist'], prev.filter(id => id !== condition_id));
+            return { prev };
+        },
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.prev) queryClient.setQueryData(['watchlist'], ctx.prev);
+        },
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
     });
 
     function toggleWatchlist(e: React.MouseEvent, conditionId: string, title: string) {

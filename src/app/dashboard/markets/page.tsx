@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchActiveMarketsAction } from "@/lib/actions";
+import { createClient } from "@/lib/supabase";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { TrendingUp, ArrowUpRight, BarChart2, Activity, Star } from "lucide-react";
-import { useEffect } from "react";
 
 const CATEGORIES = ["All", "Watchlist", "Crypto", "Politics", "Pop Culture", "Sports"];
 
@@ -14,40 +14,61 @@ function MarketsContent() {
     const searchParams = useSearchParams();
     const searchQuery = searchParams.get('q') || "";
     const [selectedCategory, setSelectedCategory] = useState("All");
-    const [watchlist, setWatchlist] = useState<string[]>([]);
+    const supabase = createClient();
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        const saved = localStorage.getItem('polylens_watchlist');
-        if (saved) {
-            try { setWatchlist(JSON.parse(saved)); } catch (e) { }
-        }
-    }, []);
+    // Fetch watchlist from Supabase
+    const { data: watchlistIds = [] } = useQuery<string[]>({
+        queryKey: ['watchlist'],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return [];
+            const { data } = await supabase.from("watchlists").select("condition_id").eq("user_id", user.id);
+            return (data || []).map((r: any) => r.condition_id as string);
+        },
+    });
 
-    const toggleWatchlist = (e: React.MouseEvent, id: string) => {
-        e.preventDefault(); // Prevent navigating to the market detail page
-        setWatchlist(prev => {
-            const next = prev.includes(id) ? prev.filter(wId => wId !== id) : [...prev, id];
-            localStorage.setItem('polylens_watchlist', JSON.stringify(next));
-            return next;
-        });
+    // Optimistic star toggle
+    const toggleMutation = useMutation({
+        mutationFn: async ({ conditionId, title, starred }: { conditionId: string; title: string; starred: boolean }) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            if (starred) {
+                await supabase.from("watchlists").delete().eq("user_id", user.id).eq("condition_id", conditionId);
+            } else {
+                await supabase.from("watchlists").upsert({ user_id: user.id, condition_id: conditionId, market_title: title }, { onConflict: "user_id,condition_id" });
+            }
+        },
+        onMutate: async ({ conditionId, starred }) => {
+            await queryClient.cancelQueries({ queryKey: ['watchlist'] });
+            const prev = queryClient.getQueryData<string[]>(['watchlist']) || [];
+            queryClient.setQueryData<string[]>(['watchlist'],
+                starred ? prev.filter(id => id !== conditionId) : [...prev, conditionId]
+            );
+            return { prev };
+        },
+        onError: (_err, _vars, ctx) => {
+            if (ctx?.prev) queryClient.setQueryData(['watchlist'], ctx.prev);
+        },
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
+    });
+
+    const toggleWatchlist = (e: React.MouseEvent, conditionId: string, title: string) => {
+        e.preventDefault();
+        toggleMutation.mutate({ conditionId, title, starred: watchlistIds.includes(conditionId) });
     };
 
     const { data: markets, isLoading } = useQuery({
         queryKey: ['activeMarkets'],
         queryFn: () => fetchActiveMarketsAction(50),
-        refetchInterval: 300000, // 5 min
+        refetchInterval: 300000,
     });
-
-    // Debugging logic
-    console.log("[MarketsPage] Render cycle markets state:", markets ? markets.length : "loading");
 
     const filteredMarkets = markets?.filter((market: any) => {
         const matchesSearch = market.title.toLowerCase().includes(searchQuery.toLowerCase());
-
         if (selectedCategory === "Watchlist") {
-            return matchesSearch && watchlist.includes(market.id.toString());
+            return matchesSearch && watchlistIds.includes(market.conditionId);
         }
-
         const matchesCategory = selectedCategory === "All" || market.category.toLowerCase().includes(selectedCategory.toLowerCase());
         return matchesSearch && matchesCategory;
     });
@@ -111,10 +132,10 @@ function MarketsContent() {
                                 </h3>
                                 <div className="flex flex-col items-end gap-2">
                                     <button
-                                        onClick={(e) => toggleWatchlist(e, market?.id?.toString())}
+                                        onClick={(e) => toggleWatchlist(e, market.conditionId, market.title)}
                                         className="text-muted hover:text-yellow-400 transition-colors z-10"
                                     >
-                                        <Star className={`w-5 h-5 ${watchlist.includes(market?.id?.toString()) ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                                        <Star className={`w-5 h-5 transition-all ${watchlistIds.includes(market.conditionId) ? 'fill-yellow-400 text-yellow-400 scale-110' : ''}`} />
                                     </button>
                                     <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-sm uppercase tracking-wider ${market.sentiment === 'Positive' ? 'bg-positive/20 text-positive' :
                                         market.sentiment === 'Negative' ? 'bg-negative/20 text-negative' :
