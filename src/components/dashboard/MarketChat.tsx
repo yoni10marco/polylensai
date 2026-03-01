@@ -145,22 +145,12 @@ export default function MarketChat({ marketContext, conditionId }: MarketChatPro
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+                // API streams raw text — just decode and append directly
                 const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split("\n");
-                for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                        const jsonStr = line.slice(6).trim();
-                        if (jsonStr === "[DONE]") break;
-                        try {
-                            const parsed = JSON.parse(jsonStr);
-                            const token = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                            accumulated += token;
-                            setMessages(prev => prev.map(m =>
-                                m.id === assistantId ? { ...m, text: accumulated } : m
-                            ));
-                        } catch { }
-                    }
-                }
+                accumulated += chunk;
+                setMessages(prev => prev.map(m =>
+                    m.id === assistantId ? { ...m, text: accumulated } : m
+                ));
             }
 
             setMessages(prev => prev.map(m =>
