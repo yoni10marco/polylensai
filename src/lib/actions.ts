@@ -146,6 +146,7 @@ export async function fetchMarketByConditionId(conditionId: string) {
             id: market.conditionId,
             conditionId: market.conditionId,
             title: parentEvent?.title || market.question || "Unknown Market",
+            question: market.question || "",
             probability: getProbability(market.outcomePrices),
             volume: formatVolume(market.volume || parentEvent?.volume),
             volume24hr: formatVolume(market.volume24hr || parentEvent?.volume24hr),
