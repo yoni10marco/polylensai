@@ -136,9 +136,9 @@ function MarketsContent() {
                                     {market?.probability === "N/A" ? (
                                         <div className="bg-white/10 text-muted px-2 py-1 rounded-sm text-sm font-bold inline-block self-start mt-1">N/A</div>
                                     ) : (
-                                        <div className={`flex items-center gap-1 font-extrabold px-2 py-1 rounded-sm text-xl mt-1 self-start ${market?.probability > 50 ? 'bg-positive/20 text-positive' : 'bg-negative/20 text-negative'}`}>
-                                            {market?.probability}¢
-                                            {market?.probability > 50 ? <ArrowUpRight className="w-5 h-5 opacity-80" /> : null}
+                                        <div className={`flex items-center gap-1 font-extrabold px-2 py-1 rounded-sm text-xl mt-1 self-start ${parseFloat(market?.probability) > 50 ? 'bg-positive/20 text-positive' : 'bg-negative/20 text-negative'}`}>
+                                            {market?.probability}%
+                                            {parseFloat(market?.probability) > 50 ? <ArrowUpRight className="w-5 h-5 opacity-80" /> : null}
                                         </div>
                                     )}
                                 </div>

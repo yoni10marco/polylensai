@@ -112,24 +112,44 @@ export async function fetchActiveMarketsAction(limit = 50) {
 
 export async function fetchMarketByConditionId(conditionId: string) {
     try {
+        // The /markets?condition_id= param is silently ignored by the Gamma API.
+        // Instead, we fetch active events and search through nested markets for
+        // the one whose conditionId matches.
         const res = await fetch(
-            `https://gamma-api.polymarket.com/markets?condition_id=${conditionId}`,
+            `https://gamma-api.polymarket.com/events?active=true&closed=false&archived=false&limit=200&order=volume24hr&dir=desc`,
             { next: { revalidate: 60 } }
         );
         if (!res.ok) return null;
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) return null;
+        const events = await res.json();
+        if (!Array.isArray(events)) return null;
 
-        const market = data[0];
-        console.log(`[fetchMarketByConditionId] Found market: ${market.question}`);
+        let market: any = null;
+        let parentEvent: any = null;
+
+        for (const event of events) {
+            if (!Array.isArray(event.markets)) continue;
+            const found = event.markets.find((m: any) => m.conditionId === conditionId);
+            if (found) {
+                market = found;
+                parentEvent = event;
+                break;
+            }
+        }
+
+        if (!market) {
+            console.warn(`[fetchMarketByConditionId] conditionId ${conditionId} not found in active events.`);
+            return null;
+        }
+
+        console.log(`[fetchMarketByConditionId] Found market: ${market.question || parentEvent?.title}`);
         return {
             id: market.conditionId,
             conditionId: market.conditionId,
-            title: market.question || "Unknown Market",
+            title: parentEvent?.title || market.question || "Unknown Market",
             probability: getProbability(market.outcomePrices),
-            volume: formatVolume(market.volume),
-            volume24hr: formatVolume(market.volume24hr),
-            image: market.image || "",
+            volume: formatVolume(market.volume || parentEvent?.volume),
+            volume24hr: formatVolume(market.volume24hr || parentEvent?.volume24hr),
+            image: parentEvent?.image || market.image || "",
             outcomes: (() => {
                 try { return JSON.parse(market.outcomes || "[]"); } catch { return []; }
             })(),
@@ -140,8 +160,8 @@ export async function fetchMarketByConditionId(conditionId: string) {
                 } catch { return []; }
             })(),
             clobTokenIds: market.clobTokenIds,
-            endDate: market.endDateIso,
-            slug: market.slug,
+            endDate: market.endDateIso || parentEvent?.endDate,
+            slug: market.slug || parentEvent?.slug,
         };
     } catch (error) {
         console.error("[fetchMarketByConditionId] Failed:", error);
@@ -153,19 +173,28 @@ export async function fetchMarketPriceHistoryAction(conditionId: string) {
     try {
         console.log(`[fetchMarketHistoryAction] Resolving token ID for condition: ${conditionId}`);
 
+        // Same fix: /markets?condition_id= is ignored; search events instead.
         const gammaRes = await fetch(
-            `https://gamma-api.polymarket.com/markets?condition_id=${conditionId}`,
+            `https://gamma-api.polymarket.com/events?active=true&closed=false&archived=false&limit=200&order=volume24hr&dir=desc`,
             { next: { revalidate: 60 } }
         );
-        if (!gammaRes.ok) throw new Error("Failed to fetch Gamma market details");
-        const gammaData = await gammaRes.json();
+        if (!gammaRes.ok) throw new Error("Failed to fetch Gamma events");
+        const events = await gammaRes.json();
 
-        if (!Array.isArray(gammaData) || gammaData.length === 0) {
+        let market: any = null;
+        if (Array.isArray(events)) {
+            for (const event of events) {
+                if (!Array.isArray(event.markets)) continue;
+                const found = event.markets.find((m: any) => m.conditionId === conditionId);
+                if (found) { market = found; break; }
+            }
+        }
+
+        if (!market) {
             console.log("[fetchMarketHistoryAction] No market found for conditionId.");
             return [];
         }
 
-        const market = gammaData[0];
         const clobTokenIdsStr = market.clobTokenIds;
         if (!clobTokenIdsStr) return [];
 
