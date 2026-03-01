@@ -21,11 +21,17 @@ export default function Sidebar() {
     const router = useRouter();
     const supabase = createClient();
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [tier, setTier] = useState<string>("free");
     const [signingOut, setSigningOut] = useState(false);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => {
-            setUserEmail(data.user?.email ?? null);
+        supabase.auth.getUser().then(async ({ data }) => {
+            const user = data.user;
+            if (!user) return;
+            setUserEmail(user.email ?? null);
+            const { data: profile } = await supabase
+                .from("profiles").select("tier").eq("id", user.id).single();
+            setTier(profile?.tier ?? "free");
         });
     }, []);
 
@@ -79,7 +85,13 @@ export default function Sidebar() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-white text-xs font-semibold truncate">{userEmail}</p>
-                            <p className="text-muted text-[10px]">Free plan</p>
+                            {tier === "pro" ? (
+                                <span className="text-[10px] font-bold text-yellow-400 flex items-center gap-1">
+                                    ⚡ Pro Plan
+                                </span>
+                            ) : (
+                                <p className="text-muted text-[10px]">Free plan</p>
+                            )}
                         </div>
                     </div>
                 )}
