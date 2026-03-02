@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchMarketPriceHistoryAction, fetchMarketByConditionId } from "@/lib/actions";
 import PriceChart from "@/components/dashboard/PriceChart";
 import MarketChat from "@/components/dashboard/MarketChat";
+import ProAnalyticsPanel from "@/components/dashboard/ProAnalyticsPanel";
 import { ArrowUpRight, Activity, TrendingUp, BarChart2, ExternalLink, AlertTriangle, Zap } from "lucide-react";
 
 // Compute lag signal from the last N price points
@@ -49,6 +50,17 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
         headlines: [] as string[],
         priceHistory: chartData || [],
     };
+
+    // Derive category for BTC correlation trigger
+    const CRYPTO_RE = /crypto|bitcoin|ethereum|defi|nft|blockchain|solana|doge|xrp/i;
+    const POLITICS_RE = /politic|election|vote|congress|senate|president|white house|biden|trump/i;
+    const BUSINESS_RE = /business|economy|stock|market|gdp|fed|inflation|interest rate/i;
+    const marketTitle = (market?.title || "") + " " + (market?.question || "");
+    const marketCategory =
+        CRYPTO_RE.test(marketTitle) ? "Crypto"
+            : POLITICS_RE.test(marketTitle) ? "Politics"
+                : BUSINESS_RE.test(marketTitle) ? "Business"
+                    : "Other";
 
     if (!isLoading && !market) {
         return (
@@ -276,6 +288,15 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                     )}
                 </div>
             </div>
+
+            {/* Pro Analytics Panel */}
+            {!isLoading && (
+                <ProAnalyticsPanel
+                    conditionId={conditionId}
+                    chartData={chartData || []}
+                    category={marketCategory}
+                />
+            )}
         </div>
     );
 }

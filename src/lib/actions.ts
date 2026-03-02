@@ -243,3 +243,179 @@ export async function fetchMarketPriceHistoryAction(conditionId: string) {
         return [];
     }
 }
+
+// ---------------------------------------------------------------------------
+// Pro Analytics: Order Book & Slippage
+// ---------------------------------------------------------------------------
+export async function fetchOrderBookAction(tokenId: string) {
+    try {
+        const res = await fetch(
+            `https://clob.polymarket.com/book?token_id=${tokenId}`,
+            { next: { revalidate: 30 } }
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+
+        const bids: { price: string; size: string }[] = data.bids || [];
+        const asks: { price: string; size: string }[] = data.asks || [];
+
+        if (bids.length === 0 || asks.length === 0) return null;
+
+        const bestBid = parseFloat(bids[0].price);
+        const bestAsk = parseFloat(asks[0].price);
+        const mid = (bestBid + bestAsk) / 2;
+        const spreadPct = mid > 0 ? ((bestAsk - bestBid) / mid) * 100 : 0;
+
+        // Simulate a $1,000 market buy walking up the ask ladder
+        let remaining = 1000; // USDC to spend
+        let sharesAcquired = 0;
+        const sortedAsks = [...asks].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        for (const level of sortedAsks) {
+            const levelPrice = parseFloat(level.price);
+            const levelShares = parseFloat(level.size);
+            const levelCost = levelPrice * levelShares;
+            if (remaining <= 0) break;
+            if (levelCost <= remaining) {
+                sharesAcquired += levelShares;
+                remaining -= levelCost;
+            } else {
+                sharesAcquired += remaining / levelPrice;
+                remaining = 0;
+            }
+        }
+        const avgFillPrice = sharesAcquired > 0 ? (1000 - remaining) / sharesAcquired : bestAsk;
+        const slippagePct = bestAsk > 0 ? Math.abs((avgFillPrice - bestAsk) / bestAsk) * 100 : 0;
+
+        // Liquidity depth: total USDC within 5% of mid on both sides
+        const range = mid * 0.05;
+        const liquidityDepth =
+            bids.filter(b => parseFloat(b.price) >= mid - range)
+                .reduce((s, b) => s + parseFloat(b.price) * parseFloat(b.size), 0) +
+            asks.filter(a => parseFloat(a.price) <= mid + range)
+                .reduce((s, a) => s + parseFloat(a.price) * parseFloat(a.size), 0);
+
+        return {
+            bestBid: parseFloat(bestBid.toFixed(4)),
+            bestAsk: parseFloat(bestAsk.toFixed(4)),
+            spreadPct: parseFloat(spreadPct.toFixed(3)),
+            slippagePct: parseFloat(slippagePct.toFixed(3)),
+            liquidityDepth: parseFloat(liquidityDepth.toFixed(2)),
+        };
+    } catch (error) {
+        console.error("[fetchOrderBookAction] Failed:", error);
+        return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pro Analytics: Whale Trade Tracker
+// ---------------------------------------------------------------------------
+export async function fetchWhaleTradesAction(tokenId: string, threshold = 1000) {
+    try {
+        const res = await fetch(
+            `https://clob.polymarket.com/trades?token_id=${tokenId}&limit=100`,
+            { next: { revalidate: 30 } }
+        );
+        if (!res.ok) return { whaleTrades: [], totalWhaleVolume: 0 };
+        const data = await res.json();
+        const trades: any[] = Array.isArray(data) ? data : (data.data || []);
+
+        const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
+        const whaleTrades = trades
+            .filter((t: any) => {
+                const ts = t.match_time
+                    ? new Date(t.match_time).getTime()
+                    : (t.timestamp ? t.timestamp * 1000 : 0);
+                const usdcValue = parseFloat(t.size || "0") * parseFloat(t.price || "0");
+                return ts >= cutoff24h && usdcValue >= threshold;
+            })
+            .map((t: any) => {
+                const ts = t.match_time
+                    ? new Date(t.match_time).getTime()
+                    : (t.timestamp ? t.timestamp * 1000 : 0);
+                const usdcValue = parseFloat(t.size || "0") * parseFloat(t.price || "0");
+                const minutesAgo = Math.round((Date.now() - ts) / 60000);
+                const formattedTime = minutesAgo < 60
+                    ? `${minutesAgo}m ago`
+                    : minutesAgo < 1440
+                        ? `${Math.round(minutesAgo / 60)}h ago`
+                        : `${Math.round(minutesAgo / 1440)}d ago`;
+                return {
+                    side: t.side === "BUY" || t.taker_side === "buy" ? "BUY" : "SELL",
+                    usdcValue: parseFloat(usdcValue.toFixed(2)),
+                    timestamp: ts,
+                    formattedTime,
+                };
+            })
+            .sort((a: any, b: any) => b.timestamp - a.timestamp);
+
+        const totalWhaleVolume = whaleTrades.reduce((s: number, t: any) => s + t.usdcValue, 0);
+        return { whaleTrades, totalWhaleVolume: parseFloat(totalWhaleVolume.toFixed(2)) };
+    } catch (error) {
+        console.error("[fetchWhaleTradesAction] Failed:", error);
+        return { whaleTrades: [], totalWhaleVolume: 0 };
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pro Analytics: BTC 24h Trend (CoinGecko)
+// ---------------------------------------------------------------------------
+export async function fetchBtcTrendAction() {
+    try {
+        const res = await fetch(
+            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true",
+            { next: { revalidate: 300 } } // 5-minute cache
+        );
+        if (!res.ok) return null; // graceful fallback for 429 rate limit
+        const data = await res.json();
+        const btc = data?.bitcoin;
+        if (!btc) return null;
+        return {
+            price: parseFloat(btc.usd.toFixed(0)),
+            change24h: parseFloat((btc.usd_24h_change || 0).toFixed(2)),
+        };
+    } catch (error) {
+        console.error("[fetchBtcTrendAction] Failed:", error);
+        return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pro Analytics: Orchestrator (resolves tokenId + fetches order book & whale data)
+// ---------------------------------------------------------------------------
+export async function fetchExtendedMarketDataAction(conditionId: string) {
+    try {
+        // Resolve tokenId from conditionId (same pattern as price history)
+        const gammaRes = await fetch(
+            `https://gamma-api.polymarket.com/events?active=true&closed=false&archived=false&limit=200&order=volume24hr&dir=desc`,
+            { next: { revalidate: 60 } }
+        );
+        if (!gammaRes.ok) return null;
+        const events = await gammaRes.json();
+
+        let tokenId: string | null = null;
+        if (Array.isArray(events)) {
+            for (const event of events) {
+                if (!Array.isArray(event.markets)) continue;
+                const found = event.markets.find((m: any) => m.conditionId === conditionId);
+                if (found?.clobTokenIds) {
+                    const ids: string[] = JSON.parse(found.clobTokenIds);
+                    tokenId = ids[0] || null;
+                    break;
+                }
+            }
+        }
+
+        if (!tokenId) return null;
+
+        const [orderBook, whaleData] = await Promise.all([
+            fetchOrderBookAction(tokenId),
+            fetchWhaleTradesAction(tokenId),
+        ]);
+
+        return { orderBook, whaleData, tokenId };
+    } catch (error) {
+        console.error("[fetchExtendedMarketDataAction] Failed:", error);
+        return null;
+    }
+}
