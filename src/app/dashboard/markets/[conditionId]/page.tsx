@@ -5,6 +5,7 @@ import { fetchMarketPriceHistoryAction, fetchMarketByConditionId } from "@/lib/a
 import PriceChart from "@/components/dashboard/PriceChart";
 import MarketChat from "@/components/dashboard/MarketChat";
 import ProAnalyticsPanel from "@/components/dashboard/ProAnalyticsPanel";
+import SocialIntelligencePanel from "@/components/dashboard/SocialIntelligencePanel";
 import { ArrowUpRight, Activity, TrendingUp, BarChart2, ExternalLink, AlertTriangle, Zap } from "lucide-react";
 
 // Compute lag signal from the last N price points
@@ -294,6 +295,16 @@ export default function MarketDetailPage({ params }: { params: { conditionId: st
                 <ProAnalyticsPanel
                     conditionId={conditionId}
                     chartData={chartData || []}
+                    category={marketCategory}
+                />
+            )}
+
+            {/* Social Intelligence Panel */}
+            {!isLoading && market && (
+                <SocialIntelligencePanel
+                    conditionId={conditionId}
+                    marketTitle={market.title || ""}
+                    probability={market.probability || "N/A"}
                     category={marketCategory}
                 />
             )}
